@@ -1,75 +1,149 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useAuthContext } from '@/contexts/AuthContext';
+import React, { useState } from 'react';
+import {
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { RecentItem, RecordingCard, StatsCard } from '../../components/home';
+import { StatusBar } from '../../components/ui';
+import { Colors, Spacing, Typography } from '../../constants';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+interface RecentRecord {
+  id: string;
+  patientName: string;
+  date: string;
+  time: string;
+  duration: string;
+  isPlaying: boolean;
+}
 
 export default function HomeScreen() {
+  const { user } = useAuthContext();
+  const [recentRecords, setRecentRecords] = useState<RecentRecord[]>([
+    {
+      id: '1',
+      patientName: 'Patient Name',
+      date: '28 May 2024',
+      time: '04:22pm',
+      duration: '00:30:40',
+      isPlaying: false,
+    },
+    {
+      id: '2',
+      patientName: 'Patient Name',
+      date: '28 May 2024',
+      time: '04:22pm',
+      duration: '00:30:40',
+      isPlaying: false,
+    },
+  ]);
+
+  const handleStatsPress = (type: 'pending' | 'sent') => {
+    console.log(`${type} stats pressed`);
+  };
+
+  const handleRecordPress = () => {
+    console.log('Record new dictation pressed');
+  };
+
+  const handleTogglePlay = (id: string) => {
+    setRecentRecords(prev =>
+      prev.map(record =>
+        record.id === id
+          ? { ...record, isPlaying: !record.isPlaying }
+          : { ...record, isPlaying: false }
+      )
+    );
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <SafeAreaView style={styles.container}>
+      <StatusBar time="9:41" signalStrength={4} batteryLevel={80} />
+      
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <Text style={styles.welcome}>Welcome</Text>
+          <Text style={styles.userName}>{user?.firstName} {user?.lastName}</Text>
+          <Text style={styles.subtitle}>Choose from the below options</Text>
+        </View>
+
+        <View style={styles.statsContainer}>
+          <StatsCard
+            title="Pending"
+            value="9"
+            onPress={() => handleStatsPress('pending')}
+          />
+          <StatsCard
+            title="Sent"
+            value="73"
+            onPress={() => handleStatsPress('sent')}
+          />
+        </View>
+
+        <RecordingCard onPress={handleRecordPress} />
+
+        <View style={styles.recentsSection}>
+          <Text style={styles.recentsTitle}>Recents</Text>
+          {recentRecords.map(record => (
+            <RecentItem
+              key={record.id}
+              patientName={record.patientName}
+              date={record.date}
+              time={record.time}
+              duration={record.duration}
+              isPlaying={record.isPlaying}
+              onTogglePlay={() => handleTogglePlay(record.id)}
+            />
+          ))}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  content: {
+    flexGrow: 1,
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.lg,
+  },
+  header: {
+    marginBottom: Spacing.xl,
+  },
+  welcome: {
+    fontSize: Typography.sizes.lg,
+    color: Colors.primary,
+    marginBottom: Spacing.xs,
+  },
+  userName: {
+    fontSize: Typography.sizes.xxxl,
+    fontWeight: Typography.weights.bold,
+    color: Colors.text.primary,
+    marginBottom: Spacing.sm,
+  },
+  subtitle: {
+    fontSize: Typography.sizes.md,
+    color: Colors.text.secondary,
+  },
+  statsContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    marginBottom: Spacing.lg,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  recentsSection: {
+    marginTop: Spacing.lg,
+    paddingBottom: Spacing.xxxl,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  recentsTitle: {
+    fontSize: Typography.sizes.xl,
+    fontWeight: Typography.weights.semiBold,
+    color: Colors.text.secondary,
+    marginBottom: Spacing.lg,
   },
 });
