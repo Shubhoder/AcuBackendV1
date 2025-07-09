@@ -1,8 +1,7 @@
-import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
-import { Mic } from 'lucide-react-native';
-import { Card } from '../ui';
-import { Colors, Typography, Spacing } from '../../constants';
+import React from "react";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Colors, Spacing, Typography } from "../../constants";
+import { Card } from "../ui";
 
 interface RecordingCardProps {
   onPress: () => void;
@@ -26,7 +25,11 @@ export const RecordingCard: React.FC<RecordingCardProps> = ({ onPress }) => {
           </View>
         </View>
         <View style={styles.micContainer}>
-          <Mic size={32} color={Colors.white} />
+          <Image
+            source={require("../../assets/mic.png")}
+            style={{ width: 120, height: 120 }}
+            resizeMode="contain"
+          />
         </View>
         <Text style={styles.title}>Record New Dictation</Text>
       </Card>
@@ -40,23 +43,23 @@ const styles = StyleSheet.create({
     marginVertical: Spacing.lg,
   },
   card: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: Spacing.xxl,
-    position: 'relative',
-    overflow: 'hidden',
+    position: "relative",
+    overflow: "hidden",
   },
   waveformBackground: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   waveform: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     height: 60,
     opacity: 0.1,
   },
@@ -67,13 +70,8 @@ const styles = StyleSheet.create({
     borderRadius: 1,
   },
   micContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.lg,
+    // alignItems: "center",
+    // marginVertical: 30,
   },
   title: {
     fontSize: Typography.sizes.xl,

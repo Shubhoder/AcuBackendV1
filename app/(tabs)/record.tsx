@@ -1,15 +1,21 @@
-import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
-import { StatusBar } from '../../components/ui';
-import { Colors, Typography, Spacing } from '../../constants';
+import React from "react";
+import { Image, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { StatusBar } from "../../components/ui";
+import { Colors, Spacing, Typography } from "../../constants";
 
 export default function RecordScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar time="9:41" signalStrength={4} batteryLevel={80} />
       <View style={styles.content}>
-        <Text style={styles.title}>Record</Text>
-        <Text style={styles.subtitle}>Start recording your medical dictation</Text>
+        <View style={styles.logoContainer}>
+          <Image
+            source={require("../../assets/mic.png")}
+            style={{ width: 120, height: 120 }}
+            resizeMode="contain"
+          />
+        </View>
+        <Text style={styles.subtitle}>Start recording </Text>
       </View>
     </SafeAreaView>
   );
@@ -22,8 +28,8 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: Spacing.lg,
   },
   title: {
@@ -32,9 +38,13 @@ const styles = StyleSheet.create({
     color: Colors.text.primary,
     marginBottom: Spacing.md,
   },
+  logoContainer: {
+    alignItems: "center",
+    marginVertical: 30,
+  },
   subtitle: {
     fontSize: Typography.sizes.md,
     color: Colors.text.secondary,
-    textAlign: 'center',
+    textAlign: "center",
   },
 });

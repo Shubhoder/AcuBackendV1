@@ -1,30 +1,30 @@
-import React, { useState } from 'react';
+import { useAuthContext } from "@/contexts/AuthContext";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
+  Alert,
   SafeAreaView,
   ScrollView,
-  Alert,
+  StyleSheet,
+  Text,
   TouchableOpacity,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { StatusBar, Button, TextInput, Checkbox } from '../../components/ui';
-import { Logo } from '../../components/common';
-import { useAuthContext } from '@/contexts/AuthContext';
-import { Colors, Typography, Spacing } from '../../constants';
+  View,
+} from "react-native";
+import { Logo } from "../../components/common";
+import { Button, Checkbox, StatusBar, TextInput } from "../../components/ui";
+import { Colors, Spacing, Typography } from "../../constants";
 
 export default function LoginScreen() {
   const router = useRouter();
   const { login } = useAuthContext();
-  const [email, setEmail] = useState('Loisbecket@gmail.com');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("test");
+  const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert("Error", "Please fill in all fields");
       return;
     }
 
@@ -32,32 +32,33 @@ export default function LoginScreen() {
     try {
       const success = await login(email, password);
       if (success) {
-        router.replace('/(tabs)');
+        router.replace("/(tabs)");
       } else {
-        Alert.alert('Error', 'Login failed. Please check your credentials.');
+        Alert.alert("Error", "Login failed. Please check your credentials.");
       }
     } catch (error) {
-      Alert.alert('Error', 'An error occurred during login');
+      Alert.alert("Error", "An error occurred during login");
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleSignUpPress = () => {
-    router.push('/auth/signup');
+    router.push("/auth/signup");
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar time="9:41" signalStrength={4} batteryLevel={80} />
-      
+
       <ScrollView contentContainerStyle={styles.content}>
         <Logo size={280} />
-        
+
         <View style={styles.header}>
           <Text style={styles.title}>Get Started now</Text>
           <Text style={styles.subtitle}>
-            Log in to access the medical transcription services of Acu Trans Solutions.
+            Log in to access the medical transcription services of Acu Trans
+            Solutions.
           </Text>
         </View>
 
@@ -66,7 +67,7 @@ export default function LoginScreen() {
             label="Email"
             value={email}
             onChangeText={setEmail}
-            placeholder="Loisbecket@gmail.com"
+            placeholder="test"
             keyboardType="email-address"
             autoCapitalize="none"
           />
@@ -118,7 +119,7 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.lg,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: Spacing.xxl,
   },
   title: {
@@ -130,7 +131,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: Typography.sizes.md,
     color: Colors.text.secondary,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: Typography.lineHeights.normal * Typography.sizes.md,
   },
   form: {
@@ -140,13 +141,13 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
   loginButton: {
-    width: '100%',
+    width: "100%",
     marginBottom: Spacing.lg,
   },
   signUpContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
   },
   signUpText: {
     fontSize: Typography.sizes.md,

@@ -1,7 +1,13 @@
-import React from 'react';
-import { Tabs } from 'expo-router';
-import { Chrome as Home, FileText, Mic, Settings, Share } from 'lucide-react-native';
-import { Colors } from '../../constants';
+import { Tabs } from "expo-router";
+import {
+  FileText,
+  Chrome as Home,
+  LogOut,
+  Mic,
+  Settings,
+} from "lucide-react-native";
+import React from "react";
+import { Colors } from "../../constants";
 
 export default function TabsLayout() {
   return (
@@ -20,23 +26,21 @@ export default function TabsLayout() {
         },
         tabBarLabelStyle: {
           fontSize: 12,
-          fontWeight: '500',
+          fontWeight: "500",
         },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <Home size={size} color={color} />
-          ),
+          title: "Home",
+          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="documents"
         options={{
-          title: 'Documents',
+          title: "Documents",
           tabBarIcon: ({ color, size }) => (
             <FileText size={size} color={color} />
           ),
@@ -45,28 +49,24 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="record"
         options={{
-          title: 'Record',
-          tabBarIcon: ({ color, size }) => (
-            <Mic size={size} color={color} />
-          ),
+          title: "Record",
+          tabBarIcon: ({ color, size }) => <Mic size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
+          title: "Settings",
           tabBarIcon: ({ color, size }) => (
             <Settings size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="share"
+        name="logout"
         options={{
-          title: 'Share',
-          tabBarIcon: ({ color, size }) => (
-            <Share size={size} color={color} />
-          ),
+          title: "Logout",
+          tabBarIcon: ({ color, size }) => <LogOut size={size} color={color} />,
         }}
       />
     </Tabs>

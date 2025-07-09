@@ -1,8 +1,8 @@
-import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
-import { ChevronRight } from 'lucide-react-native';
-import { Card } from '../ui';
-import { Colors, Typography, Spacing } from '../../constants';
+import { ChevronRight } from "lucide-react-native";
+import React from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Colors, Spacing, Typography } from "../../constants";
+import { Card } from "../ui";
 
 interface StatsCardProps {
   title: string;
@@ -10,7 +10,11 @@ interface StatsCardProps {
   onPress: () => void;
 }
 
-export const StatsCard: React.FC<StatsCardProps> = ({ title, value, onPress }) => {
+export const StatsCard: React.FC<StatsCardProps> = ({
+  title,
+  value,
+  onPress,
+}) => {
   return (
     <TouchableOpacity onPress={onPress} style={styles.container}>
       <Card style={styles.card}>
@@ -30,9 +34,9 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing.xs,
   },
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.xl,
   },
