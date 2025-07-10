@@ -16,7 +16,7 @@ const ChangePasswordScreen = () => {
   const [newPassword, setNewPassword] = useState("");
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {/* Logo */}
       <View style={styles.logoContainer}>
         <Image
@@ -72,7 +72,7 @@ const ChangePasswordScreen = () => {
       <TouchableOpacity style={styles.button}>
         <Text style={styles.buttonText}>Change Password</Text>
       </TouchableOpacity>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -99,8 +99,7 @@ const styles = StyleSheet.create({
     color: "#111827",
   },
   subHeading: {
-    fontWeight: 400,
-    fontSize: 12,
+    fontSize: 16,
     textAlign: "center",
     color: "#6B7280",
     marginTop: 8,
@@ -108,8 +107,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   label: {
-    fontSize: 12,
-    fontWeight: "400",
+    fontSize: 14,
+    fontWeight: "500",
     color: "#374151",
     marginBottom: 8,
     marginTop: 20,

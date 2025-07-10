@@ -1,7 +1,5 @@
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Image,
   ScrollView,
@@ -10,7 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import FloatingTabs from "../floatingTabs";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const SettingsScreen = () => {
   const router = useRouter();
@@ -67,9 +65,6 @@ const SettingsScreen = () => {
           <Text style={styles.listText}>Support</Text>
           <Feather name="chevron-right" size={22} color="#333" />
         </TouchableOpacity>
-      </View>
-      <View>
-        <FloatingTabs />
       </View>
     </ScrollView>
   );
