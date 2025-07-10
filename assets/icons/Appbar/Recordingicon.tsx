@@ -1,22 +1,21 @@
 import * as React from "react"
 import Svg, { Path } from "react-native-svg"
-const Recordingicon = (props: any) => (
+const Recordingicon = (props: { fill?: string }) => (
   <Svg
-    xmlns="http://www.w3.org/2000/svg"
     width={26}
     height={26}
     fill="none"
     {...props}
   >
     <Path
-      stroke="#0093D0"
+      stroke={props.fill || "#0093D0"}
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth={1.543}
       d="M13 16.6a4.113 4.113 0 0 0 4.114-4.114V6.829A4.113 4.113 0 0 0 13 2.714 4.113 4.113 0 0 0 8.886 6.83v5.657A4.113 4.113 0 0 0 13 16.6Z"
     />
     <Path
-      stroke="#0093D0"
+      stroke={props.fill || "#0093D0"}
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth={1.543}

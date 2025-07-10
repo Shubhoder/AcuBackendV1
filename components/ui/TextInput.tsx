@@ -1,119 +1,137 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
-  View,
-  TextInput as RNTextInput,
-  Text,
   StyleSheet,
+  Text,
+  TextInput as RNTextInput,
+  View,
   TouchableOpacity,
-  TextInputProps,
-  ViewStyle,
+  Platform, // Import Platform for checkbox scale
 } from 'react-native';
-import { Eye, EyeOff } from 'lucide-react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { Colors, Typography, Spacing } from '../../constants';
 
-interface CustomTextInputProps extends TextInputProps {
-  label?: string;
-  error?: string;
+interface TextInputProps {
+  label: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  placeholder: string;
+  keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad';
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   isPassword?: boolean;
-  containerStyle?: ViewStyle;
-  leftIcon?: React.ReactNode;
-  rightIcon?: React.ReactNode;
+  error?: string;
 }
 
-export const TextInput: React.FC<CustomTextInputProps> = ({
+export const TextInput: React.FC<TextInputProps> = ({
   label,
-  error,
+  value,
+  onChangeText,
+  placeholder,
+  keyboardType = 'default',
+  autoCapitalize = 'sentences',
   isPassword = false,
-  containerStyle,
-  leftIcon,
-  rightIcon,
-  style,
-  ...props
+  error,
 }) => {
-  const [showPassword, setShowPassword] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
-
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
+  const [showPassword, setShowPassword] = React.useState(false);
 
   return (
-    <View style={[styles.container, containerStyle]}>
-      {label && <Text style={styles.label}>{label}</Text>}
-      <View style={[
-        styles.inputContainer,
-        isFocused && styles.focusedContainer,
-        error && styles.errorContainer,
-      ]}>
-        {leftIcon && <View style={styles.leftIcon}>{leftIcon}</View>}
+    <View style={styles.input}>
+      <Text style={styles.inputLabel}>{label}</Text>
+      <View style={isPassword ? styles.passwordContainer : styles.inputControlWrapper}>
         <RNTextInput
-          style={[styles.input, style]}
+          autoCapitalize={autoCapitalize}
+          autoCorrect={false}
+          clearButtonMode="while-editing"
+          keyboardType={keyboardType}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor="#6b7280" // Consistent with RN
+          style={isPassword ? styles.inputControlWithIcon : styles.inputControl}
           secureTextEntry={isPassword && !showPassword}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          placeholderTextColor={Colors.text.light}
-          {...props}
+          value={value}
         />
         {isPassword && (
-          <TouchableOpacity onPress={togglePasswordVisibility} style={styles.eyeIcon}>
-            {showPassword ? (
-              <EyeOff size={20} color={Colors.text.light} />
-            ) : (
-              <Eye size={20} color={Colors.text.light} />
-            )}
+          <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+            <Icon
+              name={!showPassword ? 'eye-off' : 'eye'}
+              size={20}
+              color="#6b7280" // Consistent with RN
+            />
           </TouchableOpacity>
         )}
-        {rightIcon && <View style={styles.rightIcon}>{rightIcon}</View>}
       </View>
-      {error && <Text style={styles.errorText}>{error}</Text>}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: Spacing.md,
+  input: {
+    marginBottom: 20,
   },
-  label: {
-    fontSize: Typography.sizes.sm,
-    color: Colors.text.secondary,
-    marginBottom: Spacing.xs,
-    fontWeight: Typography.weights.medium,
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: Colors.gray[700],
+    marginBottom: 8,
+    marginLeft: 4,
   },
-  inputContainer: {
+  inputControlWrapper: {
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    height: 56,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.gray[300],
+    shadowColor: Colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  inputControl: {
+    paddingHorizontal: 16,
+    fontSize: 16,
+    fontWeight: '400',
+    color: Colors.gray[800],
+    flex: 1,
+    height: '100%',
+  },
+  passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 8,
     backgroundColor: Colors.white,
-    paddingHorizontal: Spacing.md,
-    minHeight: 48,
+    borderRadius: 12,
+    height: 56,
+    borderWidth: 1,
+    borderColor: Colors.gray[300],
+    paddingRight: 12,
+    shadowColor: Colors.black,
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  focusedContainer: {
-    borderColor: Colors.primary,
-  },
-  errorContainer: {
-    borderColor: Colors.error,
-  },
-  input: {
+  inputControlWithIcon: {
     flex: 1,
-    fontSize: Typography.sizes.md,
-    color: Colors.text.primary,
-    paddingVertical: Spacing.sm,
-  },
-  leftIcon: {
-    marginRight: Spacing.sm,
-  },
-  rightIcon: {
-    marginLeft: Spacing.sm,
+    paddingVertical: 16,
+    paddingLeft: 16,
+    fontSize: 16,
+    color: Colors.gray[800],
+    fontWeight: '400',
   },
   eyeIcon: {
-    padding: Spacing.xs,
+    padding: 8,
   },
   errorText: {
-    fontSize: Typography.sizes.sm,
     color: Colors.error,
-    marginTop: Spacing.xs,
+    fontSize: 14,
+    marginTop: 4,
+    marginLeft: 4,
   },
 });

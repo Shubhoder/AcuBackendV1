@@ -11,9 +11,9 @@ export default function IndexScreen() {
   useEffect(() => {
     if (!isLoading) {
       if (isAuthenticated) {
-        router.replace('/(tabs)');
+        router.replace('./(tabs)');
       } else {
-        router.replace('/auth');
+        router.replace('./auth');
       }
     }
   }, [isAuthenticated, isLoading, router]);

@@ -3,7 +3,6 @@ import Svg, { Path, Defs, G, ClipPath } from "react-native-svg";
 
 const Changepass = (props: { fill?: string }) => (
   <Svg
-    xmlns="http://www.w3.org/2000/svg"
     width={18}
     height={18}
     fill="none"

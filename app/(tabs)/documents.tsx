@@ -6,7 +6,7 @@ import { Colors, Typography, Spacing } from '../../constants';
 export default function DocumentsScreen() {
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar time="9:41" signalStrength={4} batteryLevel={80} />
+      
       <View style={styles.content}>
         <Text style={styles.title}>Documents</Text>
         <Text style={styles.subtitle}>View your medical transcription documents</Text>

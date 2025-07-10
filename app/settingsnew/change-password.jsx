@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import React, { useState } from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Image,
   StyleSheet,
@@ -16,7 +17,7 @@ const ChangePasswordScreen = () => {
   const [newPassword, setNewPassword] = useState("");
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* Logo */}
       <View style={styles.logoContainer}>
         <Image
@@ -72,7 +73,7 @@ const ChangePasswordScreen = () => {
       <TouchableOpacity style={styles.button}>
         <Text style={styles.buttonText}>Change Password</Text>
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 };
 

@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Image,
   ScrollView,
@@ -14,13 +15,13 @@ const SettingsScreen = () => {
   return (
     <ScrollView style={styles.container}>
       {/* Logo */}
-      <View style={styles.logoContainer}>
+      <SafeAreaView style={styles.logoContainer}>
         <Image
           source={require("../../assets/logo2.png")}
           style={styles.logo}
           resizeMode="contain"
         />
-      </View>
+      </SafeAreaView>
 
       {/* Heading */}
       <Text style={styles.heading}>Settings</Text>
@@ -32,7 +33,7 @@ const SettingsScreen = () => {
 
         <TouchableOpacity
           style={styles.listItem}
-          onPress={() => router.push("/settingsnew/change-password")}
+          onPress={() => router.push("../settingsnew/change-password")}
         >
           <Feather name="lock" size={20} color="#00AEEF" />
           <Text style={styles.listText}>Change Password</Text>
@@ -41,7 +42,7 @@ const SettingsScreen = () => {
 
         <TouchableOpacity
           style={styles.listItem}
-          onPress={() => router.push("/settingsnew/delete-account")}
+          onPress={() => router.push("../settingsnew/delete-account")}
         >
           <Feather name="trash-2" size={20} color="#00AEEF" />
           <Text style={styles.listText}>Delete My Account</Text>

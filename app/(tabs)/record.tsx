@@ -1,12 +1,12 @@
 import React from "react";
 import { Image, SafeAreaView, StyleSheet, Text, View } from "react-native";
-import { StatusBar } from "../../components/ui";
+
 import { Colors, Spacing, Typography } from "../../constants";
 
 export default function RecordScreen() {
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar time="9:41" signalStrength={4} batteryLevel={80} />
+      
       <View style={styles.content}>
         <View style={styles.logoContainer}>
           <Image

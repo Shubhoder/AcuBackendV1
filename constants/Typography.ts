@@ -1,22 +1,35 @@
+// constants/Typography.ts
 export const Typography = {
   sizes: {
-    xs: 12,
-    sm: 14,
-    md: 16,
-    lg: 18,
-    xl: 20,
-    xxl: 24,
-    xxxl: 32,
+    sm: 12, // subtitle, formFooter, inputLabel, belowtext, forgetpassword
+    md: 14, // inputControl fontSize, rememberText fontSize
+    lg: 17, // btnText fontSize
+    xl: 20, // title fontSize
+    xxxl: 32, // main title size
   },
   weights: {
-    regular: '400' as const,
-    medium: '500' as const,
-    semiBold: '600' as const,
-    bold: '700' as const,
+    '400': 400 as const, // formFooter
+    '500': 500 as const, // inputControl
+    '600': 600 as const, // btnText, rememberText, inputLabel (but RN has Raleway-Regular for inputLabel)
+    '700': 700 as const, // Raleway-Bold implicitly
+    bold: 700 as const, // bold weight
+    semiBold: 600 as const, // semi-bold weight
   },
   lineHeights: {
-    tight: 1.2,
     normal: 1.5,
-    loose: 1.8,
+    subtitle: 18,
+    title: 20,
+    inputLabel: 19,
+    btnText: 24,
+  },
+  letterSpacings: {
+    sm: -0.1, // subtitle
+    md: -0.2, // inputLabel
+    lg: -0.6, // title
+  },
+  fontFamilies: {
+    extraLight: 'Raleway-ExtraLight',
+    bold: 'Raleway-Bold',
+    regular: 'Raleway-Regular',
   },
 };

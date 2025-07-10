@@ -1,6 +1,6 @@
 import * as React from 'react';
 import Svg, {Path} from 'react-native-svg';
-const SVGComponent = props => (
+const SVGComponent = (props: any) => (
   <Svg
     width="15px"
     height="15px"

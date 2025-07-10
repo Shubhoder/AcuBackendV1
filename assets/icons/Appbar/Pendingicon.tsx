@@ -2,7 +2,6 @@ import * as React from "react"
 import Svg, { Path, G, Defs, ClipPath } from "react-native-svg"
 const Pending = (props: any) => (
   <Svg
-    xmlns="http://www.w3.org/2000/svg"
     width={18}
     height={18}
     fill="none"

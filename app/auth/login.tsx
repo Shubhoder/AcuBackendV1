@@ -1,38 +1,94 @@
+// app/auth/login.tsx
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Alert,
   SafeAreaView,
   ScrollView,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  Image,
+  Modal,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
-import { Logo } from "../../components/common";
-import { Button, Checkbox, StatusBar, TextInput } from "../../components/ui";
+import AsyncStorage from '@react-native-async-storage/async-storage'; // Import AsyncStorage
+
+// Import your custom UI components. Ensure paths are correct.
+import { Button, Checkbox, TextInput } from "../../components/ui";
+
+// Import your constants. Ensure paths are correct.
 import { Colors, Spacing, Typography } from "../../constants";
+
+// Import your shared authentication styles
+import { authStyles } from "../../styles/authStyles"; // Adjust path as per your file structure
+
+// Import assets. Ensure paths are correct and assets exist.
+import Corner from '../../assets/corner.png';
+import AppLogo from '../../assets/logo.png';
 
 export default function LoginScreen() {
   const router = useRouter();
   const { login } = useAuthContext();
-  const [email, setEmail] = useState("test");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState({
+    email: '',
+    password: '',
+  });
+
+  // Logic to load saved credentials from AsyncStorage
+  useEffect(() => {
+    const loadRememberedCredentials = async () => {
+      try {
+        const res = await AsyncStorage.getItem('userLogin');
+        if (res) {
+          const data = JSON.parse(res);
+          setRememberMe(true);
+          setEmail(data?.userName || '');
+          setPassword(data?.password || '');
+        }
+      } catch (error) {
+        console.error('Failed to fetch user login from AsyncStorage:', error);
+      }
+    };
+    loadRememberedCredentials();
+  }, []);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Please fill in all fields");
-      return;
+    setErrors({ email: '', password: '' });
+    let isValid = true;
+
+    if (!email) {
+      setErrors(prev => ({ ...prev, email: '  Please Enter Your Username' }));
+      isValid = false;
     }
+    if (!password) {
+      setErrors(prev => ({ ...prev, password: '  Please Enter Your Password' }));
+      isValid = false;
+    }
+
+    if (!isValid) return;
 
     setIsLoading(true);
     try {
       const success = await login(email, password);
       if (success) {
-        router.replace("/(tabs)");
+        if (rememberMe) {
+          const data = {
+            userName: email,
+            password: password,
+          };
+          await AsyncStorage.setItem('userLogin', JSON.stringify(data));
+        } else {
+          await AsyncStorage.removeItem('userLogin');
+        }
+        router.replace("../(tabs)");
       } else {
         Alert.alert("Error", "Login failed. Please check your credentials.");
       }
@@ -44,118 +100,119 @@ export default function LoginScreen() {
   };
 
   const handleSignUpPress = () => {
-    router.push("/auth/signup");
+    router.push("./signup");
+  };
+
+  const onPressCheckBox = async (value: boolean) => {
+    setRememberMe(value);
+    if (!value) {
+      await AsyncStorage.removeItem('userLogin');
+    }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar time="9:41" signalStrength={4} batteryLevel={80} />
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
+    >
+      <SafeAreaView style={authStyles.container}>
+        {isLoading && (
+          <Modal visible={isLoading} transparent animationType="fade">
+            <View style={authStyles.modalContainer}>
+              <View
+                style={{
+                  backgroundColor: 'white',
+                  height: 70,
+                  width: 70,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  borderRadius: 10,
+                }}>
+                <ActivityIndicator size="large" color="black" />
+              </View>
+            </View>
+          </Modal>
+        )}
 
-      <ScrollView contentContainerStyle={styles.content}>
-        <Logo size={280} />
+        <Image source={Corner} style={authStyles.cornerimage} />
 
-        <View style={styles.header}>
-          <Text style={styles.title}>Get Started now</Text>
-          <Text style={styles.subtitle}>
-            Log in to access the medical transcription services of Acu Trans
-            Solutions.
-          </Text>
-        </View>
-
-        <View style={styles.form}>
-          <TextInput
-            label="Email"
-            value={email}
-            onChangeText={setEmail}
-            placeholder="test"
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-
-          <TextInput
-            label="Password"
-            value={password}
-            onChangeText={setPassword}
-            placeholder="••••••"
-            isPassword
-          />
-
-          <View style={styles.rememberMeContainer}>
-            <Checkbox
-              checked={rememberMe}
-              onToggle={() => setRememberMe(!rememberMe)}
-              label="Remember me"
-            />
+        <ScrollView
+          contentContainerStyle={authStyles.scrollViewContent}
+          showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}
+        >
+          <View style={authStyles.appLogoContainer}>
+            <Image source={AppLogo} style={authStyles.appLogo} />
           </View>
 
-          <Button
-            title="Log In"
-            onPress={handleLogin}
-            loading={isLoading}
-            size="large"
-            style={styles.loginButton}
-          />
+          <View style={authStyles.header}>
+            <Text style={authStyles.title}>Welcome to Your Dictation Assistant</Text>
+            <Text style={authStyles.subtitle}>
+              Log in to start recording your voice effortlessly.
+            </Text>
+          </View>
 
-          <View style={styles.signUpContainer}>
-            <Text style={styles.signUpText}>Don't have an account? </Text>
+          <View style={authStyles.form}>
+            <TextInput
+              label="Username"
+              value={email}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (text) {
+                  setErrors(prev => ({ ...prev, email: '' }));
+                }
+              }}
+              placeholder="Username"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              error={errors.email}
+            />
+
+            <TextInput
+              label="Password"
+              value={password}
+              onChangeText={(text) => {
+                setPassword(text);
+                if (text) {
+                  setErrors(prev => ({ ...prev, password: '' }));
+                }
+              }}
+              placeholder="********"
+              isPassword
+              error={errors.password}
+            />
+
+            <View style={authStyles.rememberMeContainerWrapper}>
+                <Checkbox
+                  checked={rememberMe}
+                  onToggle={onPressCheckBox}
+                  label="Remember Me"
+                />
+            </View>
+
+            <View style={authStyles.formAction}>
+              <Button
+                title="Log in"
+                onPress={handleLogin}
+                loading={isLoading}
+              />
+            </View>
+
             <TouchableOpacity onPress={handleSignUpPress}>
-              <Text style={styles.signUpLink}>Sign Up</Text>
+              <Text style={authStyles.formFooter}>
+                Create an account?{' '}
+                <Text style={authStyles.linkText}>
+                  Sign UP
+                </Text>
+              </Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  content: {
-    flexGrow: 1,
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.lg,
-  },
-  header: {
-    alignItems: "center",
-    marginBottom: Spacing.xxl,
-  },
-  title: {
-    fontSize: Typography.sizes.xxxl,
-    fontWeight: Typography.weights.bold,
-    color: Colors.text.primary,
-    marginBottom: Spacing.md,
-  },
-  subtitle: {
-    fontSize: Typography.sizes.md,
-    color: Colors.text.secondary,
-    textAlign: "center",
-    lineHeight: Typography.lineHeights.normal * Typography.sizes.md,
-  },
-  form: {
-    flex: 1,
-  },
-  rememberMeContainer: {
-    marginBottom: Spacing.xl,
-  },
-  loginButton: {
-    width: "100%",
-    marginBottom: Spacing.lg,
-  },
-  signUpContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  signUpText: {
-    fontSize: Typography.sizes.md,
-    color: Colors.text.secondary,
-  },
-  signUpLink: {
-    fontSize: Typography.sizes.md,
-    color: Colors.primary,
-    fontWeight: Typography.weights.semiBold,
-  },
-});
+// No need for a separate StyleSheet.create if all styles are from authStyles
+// If you had any *unique* styles for LoginScreen that shouldn't be shared,
+// you would define a `localStyles` StyleSheet here and merge it.

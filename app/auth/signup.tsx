@@ -1,3 +1,4 @@
+// app/auth/signup.tsx
 import React, { useState } from 'react';
 import {
   View,
@@ -7,35 +8,119 @@ import {
   ScrollView,
   Alert,
   TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  Image,
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { StatusBar, Button, TextInput, Checkbox } from '../../components/ui';
-import { Logo } from '../../components/common';
+import { Button, TextInput, Checkbox } from '../../components/ui';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { Colors, Typography, Spacing } from '../../constants';
+import { Colors, Spacing, Typography } from '../../constants';
+
+// Import your shared authentication styles
+import { authStyles } from "../../styles/authStyles";
+
+// Import assets
+import Corner from '../../assets/corner.png';
+import AppLogo from '../../assets/logo.png';
 
 export default function SignUpScreen() {
   const router = useRouter();
   const { signup } = useAuthContext();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('johndoe@gmail.com');
-  const [mobile, setMobile] = useState('9865453215');
+  const [email, setEmail] = useState(''); // Initialized to empty
+  const [mobile, setMobile] = useState(''); // Initialized to empty
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState(''); // Added for typical signup flow
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    mobile: '',
+    username: '',
+    password: '',
+    confirmPassword: '',
+    agreeTerms: '',
+  });
 
   const handleSignUp = async () => {
-    if (!firstName || !lastName || !email || !mobile || !username || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
+    // Reset errors first
+    setErrors({
+      firstName: '',
+      lastName: '',
+      email: '',
+      mobile: '',
+      username: '',
+      password: '',
+      confirmPassword: '',
+      agreeTerms: '',
+    });
+    
+    let isValid = true;
+    const newErrors = {
+      firstName: '',
+      lastName: '',
+      email: '',
+      mobile: '',
+      username: '',
+      password: '',
+      confirmPassword: '',
+      agreeTerms: '',
+    };
+
+    // Validate all fields
+    if (!firstName) {
+      newErrors.firstName = 'First Name is required';
+      isValid = false;
+    }
+    if (!lastName) {
+      newErrors.lastName = 'Last Name is required';
+      isValid = false;
+    }
+    if (!email) {
+      newErrors.email = 'Email is required';
+      isValid = false;
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      newErrors.email = 'Invalid email format';
+      isValid = false;
+    }
+    if (!mobile) {
+      newErrors.mobile = 'Mobile number is required';
+      isValid = false;
+    }
+    if (!username) {
+      newErrors.username = 'Username is required';
+      isValid = false;
+    }
+    if (!password) {
+      newErrors.password = 'Password is required';
+      isValid = false;
+    } else if (password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+      isValid = false;
+    }
+    if (!confirmPassword) {
+      newErrors.confirmPassword = 'Confirm Password is required';
+      isValid = false;
+    } else if (password !== confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+      isValid = false;
+    }
+    if (!agreeTerms) {
+      newErrors.agreeTerms = 'You must agree to the Terms & Service';
+      isValid = false;
     }
 
-    if (!agreeTerms) {
-      Alert.alert('Error', 'Please agree to Terms & Service');
-      return;
-    }
+    // Set all errors at once
+    setErrors(newErrors);
+
+    if (!isValid) return;
 
     setIsLoading(true);
     try {
@@ -47,9 +132,10 @@ export default function SignUpScreen() {
         username,
         password,
       });
-      
+
       if (success) {
-        router.replace('/(tabs)');
+        Alert.alert("Success", "Account created successfully! Please log in."); // Inform user to log in
+        router.replace("./login"); // Redirect to login after successful signup
       } else {
         Alert.alert('Error', 'Sign up failed. Please try again.');
       }
@@ -61,187 +147,189 @@ export default function SignUpScreen() {
   };
 
   const handleSignInPress = () => {
-    router.push('/auth/login');
+    router.push("./login");
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar time="9:41" signalStrength={4} batteryLevel={80} />
-      
-      <ScrollView contentContainerStyle={styles.content}>
-        <Logo size={280} />
-        
-        <View style={styles.header}>
-          <Text style={styles.title}>Sign Up</Text>
-          <Text style={styles.subtitle}>
-            Create an account to hire the medical transcription services of Acu Trans Solutions
-          </Text>
-        </View>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
+    >
+      <SafeAreaView style={authStyles.container}>
+        {isLoading && (
+          <Modal visible={isLoading} transparent animationType="fade">
+            <View style={authStyles.modalContainer}>
+              <View
+                style={{
+                  backgroundColor: 'white',
+                  height: 70,
+                  width: 70,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  borderRadius: 10,
+                }}>
+                <ActivityIndicator size="large" color="black" />
+              </View>
+            </View>
+          </Modal>
+        )}
 
-        <View style={styles.form}>
-          <View style={styles.nameRow}>
-            <View style={styles.nameField}>
-              <TextInput
-                label="First Name"
-                value={firstName}
-                onChangeText={setFirstName}
-                placeholder="First Name"
-              />
-            </View>
-            <View style={styles.nameField}>
-              <TextInput
-                label="Last Name"
-                value={lastName}
-                onChangeText={setLastName}
-                placeholder="Last Name"
-              />
-            </View>
+        <Image source={Corner} style={authStyles.cornerimage} />
+
+        <ScrollView
+          contentContainerStyle={authStyles.scrollViewContent}
+          showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}
+        >
+          <View style={authStyles.appLogoContainer}>
+            <Image source={AppLogo} style={authStyles.appLogo} />
           </View>
 
-          <TextInput
-            label="Email"
-            value={email}
-            onChangeText={setEmail}
-            placeholder="johndoe@gmail.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-
-          <TextInput
-            label="Mobile"
-            value={mobile}
-            onChangeText={setMobile}
-            placeholder="9865453215"
-            keyboardType="phone-pad"
-          />
-
-          <View style={styles.credentialsRow}>
-            <View style={styles.credentialsField}>
-              <TextInput
-                label="Username"
-                value={username}
-                onChangeText={setUsername}
-                placeholder="Enter Username"
-                autoCapitalize="none"
-              />
-            </View>
-            <View style={styles.credentialsField}>
-              <TextInput
-                label="Password"
-                value={password}
-                onChangeText={setPassword}
-                placeholder="••••••"
-                isPassword
-              />
-            </View>
+          <View style={authStyles.header}>
+            <Text style={authStyles.title}>Create Your Account</Text> {/* Changed title */}
+            <Text style={authStyles.subtitle}>
+              Sign up to access medical transcription services.
+            </Text> {/* Changed subtitle */}
           </View>
 
-          <View style={styles.termsContainer}>
-            <Checkbox
-              checked={agreeTerms}
-              onToggle={() => setAgreeTerms(!agreeTerms)}
+          <View style={authStyles.form}>
+            <View style={authStyles.nameRow}>
+              <View style={authStyles.nameField}>
+                <TextInput
+                  label="First Name"
+                  value={firstName}
+                  onChangeText={(text) => {
+                    setFirstName(text);
+                    if (text) setErrors(prev => ({ ...prev, firstName: '' }));
+                  }}
+                  placeholder="First Name"
+                  error={errors.firstName}
+                />
+              </View>
+              <View style={authStyles.nameField}>
+                <TextInput
+                  label="Last Name"
+                  value={lastName}
+                  onChangeText={(text) => {
+                    setLastName(text);
+                    if (text) setErrors(prev => ({ ...prev, lastName: '' }));
+                  }}
+                  placeholder="Last Name"
+                  error={errors.lastName}
+                />
+              </View>
+            </View>
+
+            <TextInput
+              label="Email"
+              value={email}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (text) setErrors(prev => ({ ...prev, email: '' }));
+              }}
+              placeholder="johndoe@example.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              error={errors.email}
             />
-            <Text style={styles.termsText}>
-              Agree with{' '}
-              <Text style={styles.termsLink}>Terms & Service</Text>
-            </Text>
-          </View>
 
-          <Button
-            title="Sign Up"
-            onPress={handleSignUp}
-            loading={isLoading}
-            size="large"
-            style={styles.signUpButton}
-          />
+            <TextInput
+              label="Mobile"
+              value={mobile}
+              onChangeText={(text) => {
+                setMobile(text);
+                if (text) setErrors(prev => ({ ...prev, mobile: '' }));
+              }}
+              placeholder="9876543210"
+              keyboardType="phone-pad"
+              error={errors.mobile}
+            />
 
-          <View style={styles.signInContainer}>
-            <Text style={styles.signInText}>Already have an account? </Text>
+            <View style={authStyles.credentialsRow}>
+              <View style={authStyles.credentialsField}>
+                <TextInput
+                  label="Username"
+                  value={username}
+                  onChangeText={(text) => {
+                    setUsername(text);
+                    if (text) setErrors(prev => ({ ...prev, username: '' }));
+                  }}
+                  placeholder="Enter Username"
+                  autoCapitalize="none"
+                  error={errors.username}
+                />
+              </View>
+              <View style={authStyles.credentialsField}>
+                <TextInput
+                  label="Password"
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    if (text) setErrors(prev => ({ ...prev, password: '' }));
+                  }}
+                  placeholder="********"
+                  isPassword
+                  error={errors.password}
+                />
+              </View>
+            </View>
+
+            <TextInput
+              label="Confirm Password"
+              value={confirmPassword}
+              onChangeText={(text) => {
+                setConfirmPassword(text);
+                if (text) setErrors(prev => ({ ...prev, confirmPassword: '' }));
+              }}
+              placeholder="********"
+              isPassword
+              error={errors.confirmPassword}
+            />
+
+            <View style={authStyles.rememberMeContainerWrapper}> {/* Reusing this style for terms, name changed below */}
+              <Checkbox
+                checked={agreeTerms}
+                onToggle={() => {
+                  setAgreeTerms(!agreeTerms);
+                  if (!agreeTerms) setErrors(prev => ({ ...prev, agreeTerms: '' }));
+                }}
+                label="Agree with Terms & Service"
+              />
+              {errors.agreeTerms ? <Text style={localStyles.errorTextTerms}>{errors.agreeTerms}</Text> : null}
+            </View>
+
+
+            <View style={authStyles.formAction}>
+              <Button
+                title="Sign Up"
+                onPress={handleSignUp}
+                loading={isLoading}
+              />
+            </View>
+
             <TouchableOpacity onPress={handleSignInPress}>
-              <Text style={styles.signInLink}>Sign In</Text>
+              <Text style={authStyles.formFooter}>
+                Already have an account?{' '}
+                <Text style={authStyles.linkText}>
+                  Sign In
+                </Text>
+              </Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  content: {
-    flexGrow: 1,
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.lg,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: Spacing.xxl,
-  },
-  title: {
-    fontSize: Typography.sizes.xxxl,
-    fontWeight: Typography.weights.bold,
-    color: Colors.text.primary,
-    marginBottom: Spacing.md,
-  },
-  subtitle: {
-    fontSize: Typography.sizes.md,
-    color: Colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: Typography.lineHeights.normal * Typography.sizes.md,
-  },
-  form: {
-    flex: 1,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    marginHorizontal: -Spacing.xs,
-  },
-  nameField: {
-    flex: 1,
-    marginHorizontal: Spacing.xs,
-  },
-  credentialsRow: {
-    flexDirection: 'row',
-    marginHorizontal: -Spacing.xs,
-  },
-  credentialsField: {
-    flex: 1,
-    marginHorizontal: Spacing.xs,
-  },
-  termsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Spacing.xl,
-  },
-  termsText: {
+// Any styles unique to the SignupScreen, or small overrides, go here.
+// For the most part, we want to reuse authStyles.
+const localStyles = StyleSheet.create({
+  // The error text for the checkbox needs a bit of a different margin perhaps
+  errorTextTerms: {
+    color: Colors.text.error,
     fontSize: Typography.sizes.sm,
-    color: Colors.text.secondary,
-    marginLeft: Spacing.sm,
-  },
-  termsLink: {
-    color: Colors.primary,
-    fontWeight: Typography.weights.semiBold,
-  },
-  signUpButton: {
-    width: '100%',
-    marginBottom: Spacing.lg,
-  },
-  signInContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  signInText: {
-    fontSize: Typography.sizes.md,
-    color: Colors.text.secondary,
-  },
-  signInLink: {
-    fontSize: Typography.sizes.md,
-    color: Colors.primary,
-    fontWeight: Typography.weights.semiBold,
+    marginTop: Spacing.sm, // Smaller margin than input error
+    marginLeft: 2, // Align with checkbox
   },
 });

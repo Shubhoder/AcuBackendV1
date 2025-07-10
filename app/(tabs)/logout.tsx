@@ -8,7 +8,7 @@ const Logout = () => {
 
   const handleLogout = () => {
     logout();
-    router.replace("/auth/login");
+    router.replace("../auth/login");
   };
   return (
     <View style={styles.container}>
@@ -20,7 +20,7 @@ const Logout = () => {
             <Text style={styles.logoutText}>Yes, logout</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.cancelButton}>
+          <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()}>
             <Text style={styles.cancelText}>Cancel</Text>
           </TouchableOpacity>
         </View>

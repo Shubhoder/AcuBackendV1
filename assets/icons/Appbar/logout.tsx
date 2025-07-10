@@ -33,7 +33,6 @@ import Svg, { Path } from "react-native-svg";
 
 const Logout = (props: { fill?: string }) => (
   <Svg
-    xmlns="http://www.w3.org/2000/svg"
     width={18}
     height={18}
     viewBox="0 0 18 18"

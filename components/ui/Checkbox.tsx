@@ -1,55 +1,55 @@
+// components/ui/Checkbox.tsx
 import React from 'react';
-import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
-import { Check } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Colors, Typography, Spacing } from '../../constants';
 
 interface CheckboxProps {
   checked: boolean;
-  onToggle: () => void;
-  label?: string;
-  size?: number;
+  onToggle: (value: boolean) => void;
+  label: string;
 }
 
-export const Checkbox: React.FC<CheckboxProps> = ({
-  checked,
-  onToggle,
-  label,
-  size = 20,
-}) => {
+export const Checkbox: React.FC<CheckboxProps> = ({ checked, onToggle, label }) => {
   return (
-    <TouchableOpacity style={styles.container} onPress={onToggle}>
-      <View style={[
-        styles.checkbox,
-        { width: size, height: size },
-        checked && styles.checkedBox,
-      ]}>
-        {checked && <Check size={size - 8} color={Colors.white} />}
+    <TouchableOpacity style={styles.rememberContainer} onPress={() => onToggle(!checked)}>
+      <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
+        {checked && <Text style={styles.checkmark}>✓</Text>}
       </View>
-      {label && <Text style={styles.label}>{label}</Text>}
+      <Text style={styles.rememberText}>{label}</Text>
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  rememberContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 12,
   },
   checkbox: {
+    width: 24,
+    height: 24,
     borderWidth: 2,
-    borderColor: Colors.gray[400],
-    borderRadius: 4,
+    borderColor: Colors.primary,
+    borderRadius: 12,
+    backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.white,
+    marginRight: 12,
   },
-  checkedBox: {
+  checkboxChecked: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
-  label: {
-    marginLeft: Spacing.sm,
-    fontSize: Typography.sizes.sm,
-    color: Colors.text.secondary,
+  checkmark: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  rememberText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: Colors.primary,
+    flex: 1,
   },
 });

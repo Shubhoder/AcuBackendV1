@@ -1,74 +1,27 @@
-import { Tabs } from "expo-router";
-import {
-  FileText,
-  Chrome as Home,
-  LogOut,
-  Mic,
-  Settings,
-} from "lucide-react-native";
-import React from "react";
-import { Colors } from "../../constants";
 
-export default function TabsLayout() {
+import { Slot, usePathname } from "expo-router";
+import React from "react";
+import { View, StyleSheet } from "react-native";
+import FloatingTabs from "../floatingTabs";
+
+export default function Layout() {
+  const pathname = usePathname();
+
+  // Hide tabs on auth screens and settings screens
+  const hideTabsOn = ["/auth/login", "/auth/signup", "/auth", "/settingsnew/change-password", "/settingsnew/delete-account"];
+  
+  const shouldShowTabs = !hideTabsOn.some(route => pathname.startsWith(route));
+
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.text.light,
-        tabBarStyle: {
-          backgroundColor: Colors.white,
-          borderTopWidth: 1,
-          borderTopColor: Colors.border,
-          paddingBottom: 8,
-          paddingTop: 8,
-          height: 64,
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: "500",
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Home",
-          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="documents"
-        options={{
-          title: "Documents",
-          tabBarIcon: ({ color, size }) => (
-            <FileText size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="record"
-        options={{
-          title: "Record",
-          tabBarIcon: ({ color, size }) => <Mic size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: "Settings",
-          tabBarIcon: ({ color, size }) => (
-            <Settings size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="logout"
-        options={{
-          title: "Logout",
-          tabBarIcon: ({ color, size }) => <LogOut size={size} color={color} />,
-        }}
-      />
-    </Tabs>
+    <View style={styles.container}>
+      <Slot />
+      {shouldShowTabs && <FloatingTabs />}
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});

@@ -42,11 +42,13 @@ export default function HomeScreen() {
   ]);
 
   const handleStatsPress = (type: 'pending' | 'sent') => {
-    console.log(`${type} stats pressed`);
+    // Handle stats navigation or action
+    // TODO: Implement navigation to stats screen
   };
 
   const handleRecordPress = () => {
-    console.log('Record new dictation pressed');
+    // Handle navigation to record screen
+    // TODO: Implement navigation to record screen
   };
 
   const handleTogglePlay = (id: string) => {
@@ -61,7 +63,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar time="9:41" signalStrength={4} batteryLevel={80} />
+      
       
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
@@ -82,6 +84,7 @@ export default function HomeScreen() {
             onPress={() => handleStatsPress('sent')}
           />
         </View>
+        
 
         <RecordingCard onPress={handleRecordPress} />
 
