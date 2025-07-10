@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import FloatingTabs from "../floatingTabs";
 
 const ChangePasswordScreen = () => {
   const [showOldPass, setShowOldPass] = useState(false);
@@ -72,6 +73,9 @@ const ChangePasswordScreen = () => {
       <TouchableOpacity style={styles.button}>
         <Text style={styles.buttonText}>Change Password</Text>
       </TouchableOpacity>
+
+      {/* Screen content */}
+      <FloatingTabs />
     </View>
   );
 };

@@ -2,6 +2,7 @@ import React from "react";
 import { Image, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "../../components/ui";
 import { Colors, Spacing, Typography } from "../../constants";
+import FloatingTabs from "../floatingTabs";
 
 export default function RecordScreen() {
   return (
@@ -17,6 +18,7 @@ export default function RecordScreen() {
         </View>
         <Text style={styles.subtitle}>Start recording </Text>
       </View>
+      <FloatingTabs />
     </SafeAreaView>
   );
 }
