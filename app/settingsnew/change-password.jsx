@@ -1,6 +1,5 @@
 import { Feather } from "@expo/vector-icons";
 import React, { useState } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Image,
   StyleSheet,

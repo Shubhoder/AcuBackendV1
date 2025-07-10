@@ -10,6 +10,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import FloatingTabs from "../floatingTabs";
+
 const SettingsScreen = () => {
   const router = useRouter();
   return (
@@ -65,6 +67,9 @@ const SettingsScreen = () => {
           <Text style={styles.listText}>Support</Text>
           <Feather name="chevron-right" size={22} color="#333" />
         </TouchableOpacity>
+      </View>
+      <View>
+        <FloatingTabs />
       </View>
     </ScrollView>
   );
