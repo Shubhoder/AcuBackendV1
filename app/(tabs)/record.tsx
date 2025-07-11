@@ -1,19 +1,30 @@
-import React from "react";
-import { Image, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
+import {
+  Image,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 import { Colors, Spacing, Typography } from "../../constants";
 
 export default function RecordScreen() {
+  const router = useRouter();
   return (
     <SafeAreaView style={styles.container}>
-      
       <View style={styles.content}>
         <View style={styles.logoContainer}>
-          <Image
-            source={require("../../assets/mic.png")}
-            style={{ width: 120, height: 120 }}
-            resizeMode="contain"
-          />
+          <TouchableOpacity
+            onPress={() => router.push("../recordingScreen/audio-recording")}
+          >
+            <Image
+              source={require("../../assets/mic.png")}
+              style={{ width: 120, height: 120 }}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
         </View>
         <Text style={styles.subtitle}>Start recording </Text>
       </View>
