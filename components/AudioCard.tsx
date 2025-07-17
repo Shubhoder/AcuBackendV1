@@ -7,7 +7,7 @@ import {
   View,
 } from "react-native";
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
-import { PlaybackWaveform } from './PlaybackWaveform';
+import { PlaybackWaveform } from "./PlaybackWaveform";
 
 export interface AudioCardProps {
   id: number | string;

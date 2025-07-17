@@ -6,14 +6,12 @@ import {
 } from 'expo-audio';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Button, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import { PlaybackWaveform } from './index';
-import { WaveformData } from '../services/audioService';
+import { PlaybackWaveform } from './PlaybackWaveform';
 
 interface AudioPlayerProps {
   audioUri: string;
   onPlaybackComplete?: () => void;
   onEditResume?: () => void;
-  waveformData?: WaveformData[];
   audioDuration?: number;
 }
 
@@ -21,7 +19,6 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   audioUri,
   onPlaybackComplete,
   onEditResume,
-  waveformData = [],
   audioDuration = 30,
 }) => {
   const player = useAudioPlayer(audioUri);
@@ -48,17 +45,20 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       const newCurrentTime = playerStatus.currentTime || 0;
       const newDuration = playerStatus.duration || audioDuration;
       
+      console.log('🎧 Audio Player Status - Current Time:', newCurrentTime.toFixed(2), 'Duration:', newDuration.toFixed(2), 'Playing:', playerStatus.playing);
+      
       setCurrentTime(newCurrentTime);
       setDuration(newDuration);
       
       // Check if playback has ended
       if (playerStatus.didJustFinish && !hasEnded) {
+        console.log('🏁 Playback completed');
         setHasEnded(true);
         if (onPlaybackComplete) {
           onPlaybackComplete();
         }
         // Auto-reset to beginning but don't start playing
-        handleSeekToStart();
+        // handleSeekToStart();
       }
       
       // Reset ended flag when starting new playback
@@ -74,7 +74,8 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     try {
       // Reset ended flag when manually starting playback
       setHasEnded(false);
-      await player.play();
+      player.volume = 0;
+      player.play();
     } catch (err) {
       console.error('Failed to play audio', err);
       Alert.alert('Playback Error', 'Could not play audio.');
@@ -83,7 +84,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
   const handlePause = async () => {
     try {
-      await player.pause();
+       player.pause();
     } catch (err) {
       console.error('Failed to pause audio', err);
     }
@@ -103,6 +104,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     try {
       // Ensure time is within bounds
       const clampedTime = Math.max(0, Math.min(duration, time));
+      console.log('🎯 Seeking audio to:', clampedTime.toFixed(2), 'seconds');
       await player.seekTo(clampedTime);
       setCurrentTime(clampedTime);
       
@@ -111,19 +113,12 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
         setHasEnded(false);
       }
     } catch (err) {
-      console.error('Failed to seek audio', err);
+      console.error('❌ Failed to seek audio', err);
     }
   };
 
-  const handleRewind = async () => {
-    const newTime = Math.max(0, currentTime - 10);
-    await handleSeek(newTime);
-  };
 
-  const handleForward = async () => {
-    const newTime = Math.min(duration, currentTime + 10);
-    await handleSeek(newTime);
-  };
+
 
   const handleEditResume = () => {
     if (onEditResume) {
@@ -133,18 +128,16 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Playback Waveform with Gesture Controls */}
-      {waveformData.length > 0 && (
-        <PlaybackWaveform
-          waveformData={waveformData}
-          duration={duration}
-          currentTime={currentTime}
-          isPlaying={playerStatus?.playing || false}
-          onSeek={handleSeek}
-          onRewind={handleRewind}
-          onForward={handleForward}
-        />
-      )}
+      {/* Playback Waveform */}
+      <PlaybackWaveform
+        audioPath={audioUri}
+        isPlaying={playerStatus?.playing || false}
+        currentTime={currentTime}
+        duration={duration}
+        onSeek={handleSeek}
+        onPlayerStateChange={(playerState) => console.log('🎵 External Player State:', playerState)}
+        onPanStateChange={(isMoving) => console.log('👆 External Pan State:', isMoving)}
+      />
       
       {/* Playback Controls */}
       <View style={styles.buttonRow}>

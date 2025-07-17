@@ -1,9 +1,9 @@
 import {
-    AudioModule,
-    RecordingPresets,
-    setAudioModeAsync,
-    useAudioRecorder,
-    useAudioRecorderState,
+  AudioModule,
+  RecordingPresets,
+  setAudioModeAsync,
+  useAudioRecorder,
+  useAudioRecorderState,
 } from 'expo-audio';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Button, StyleSheet, Text, View } from 'react-native';
@@ -43,6 +43,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
   const recorderState = useAudioRecorderState(audioRecorder);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [totalDuration, setTotalDuration] = useState(previousDuration);
+  const [isRecordingSession, setIsRecordingSession] = useState(false);
   const recordingTimerInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -77,9 +78,9 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
     setTotalDuration(previousDuration);
   }, [previousDuration]);
 
-  // Start timer when recording starts
+  // Start timer when recording starts and not paused
   useEffect(() => {
-    if (recorderState.isRecording && !isPaused && !recordingTimerInterval.current) {
+    if (isRecordingSession && !isPaused && !recordingTimerInterval.current) {
       recordingTimerInterval.current = setInterval(() => {
         setRecordingDuration(prev => {
           const newDuration = prev + 1;
@@ -88,11 +89,11 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
           return newDuration;
         });
       }, 1000);
-    } else if ((!recorderState.isRecording || isPaused) && recordingTimerInterval.current) {
+    } else if ((!isRecordingSession || isPaused) && recordingTimerInterval.current) {
       clearInterval(recordingTimerInterval.current);
       recordingTimerInterval.current = null;
     }
-  }, [recorderState.isRecording, isPaused, previousDuration]);
+  }, [isRecordingSession, isPaused, previousDuration]);
 
   // Separate effect to notify parent of duration updates
   useEffect(() => {
@@ -116,6 +117,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
         setTotalDuration(previousDuration);
       }
       
+      setIsRecordingSession(true);
       onRecordingStart();
     } catch (err) {
       console.error('Failed to start recording', err);
@@ -125,9 +127,9 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
 
   const pauseRecording = async () => {
     try {
-      // For expo-audio, we'll simulate pause by stopping the timer
-      // The actual pause functionality may need to be implemented differently
+      audioRecorder.pause();
       onRecordingPause();
+      console.log('Recording paused successfully');
     } catch (err) {
       console.error('Failed to pause recording', err);
       Alert.alert('Recording Error', 'Could not pause recording.');
@@ -136,8 +138,9 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
 
   const resumeRecording = async () => {
     try {
-      // Resume the recording timer
+      audioRecorder.record();
       onRecordingResume();
+      console.log('Recording resumed successfully');
     } catch (err) {
       console.error('Failed to resume recording', err);
       Alert.alert('Recording Error', 'Could not resume recording.');
@@ -171,6 +174,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
       recordingTimerInterval.current = null;
     }
     setRecordingDuration(0);
+    setIsRecordingSession(false);
   };
 
   // Format display time based on mode
@@ -188,6 +192,8 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
   const getStatusText = () => {
     if (isAppending) {
       return `Appending to ${formatTime(previousDuration)} recording`;
+    } else if (isRecordingSession) {
+      return isPaused ? `Recording paused (${formatTime(recordingDuration)} recorded)` : 'Recording...';
     } else {
       return 'Ready to Record';
     }
@@ -197,7 +203,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
     <View style={styles.container}>
       {/* Real-time Waveform */}
       <RealTimeWaveform
-        isRecording={recorderState.isRecording}
+        isRecording={isRecordingSession}
         isPaused={isPaused}
         duration={recordingDuration}
         onWaveformDataUpdate={onWaveformDataUpdate}
@@ -211,7 +217,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
       
       {/* Recording Controls */}
       <View style={styles.buttonRow}>
-        {!recorderState.isRecording ? (
+        {!isRecordingSession ? (
           <Button
             title={isAppending ? "🎤 Resume Recording" : "🎤 Start Recording"}
             onPress={startRecording}
@@ -245,28 +251,28 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  timer: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#00AEEF',
-    marginVertical: 20,
-  },
-  statusText: {
-    fontSize: 16,
-    color: '#64748b',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-    marginTop: 20,
-  },
+container: {
+  flex: 1,
+  justifyContent: 'center',
+  alignItems: 'center',
+  padding: 20,
+},
+timer: {
+  fontSize: 48,
+  fontWeight: 'bold',
+  color: '#00AEEF',
+  marginVertical: 20,
+},
+statusText: {
+  fontSize: 16,
+  color: '#64748b',
+  marginBottom: 10,
+  textAlign: 'center',
+},
+buttonRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-around',
+  width: '100%',
+  marginTop: 20,
+},
 }); 

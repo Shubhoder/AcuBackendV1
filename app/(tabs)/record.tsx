@@ -101,10 +101,12 @@ export default function RecordScreen() {
 
   const handleRecordingPause = () => {
     setIsRecordingPaused(true);
+    console.log('Recording paused - UI state updated');
   };
 
   const handleRecordingResume = () => {
     setIsRecordingPaused(false);
+    console.log('Recording resumed - UI state updated');
   };
 
   const handleWaveformDataUpdate = (data: WaveformData[]) => {
@@ -448,7 +450,6 @@ export default function RecordScreen() {
                 audioUri={recordedUri}
                 onPlaybackComplete={handlePlaybackComplete}
                 onEditResume={handleEditResume}
-                waveformData={waveformData}
                 audioDuration={totalRecordingDuration}
               />
             )}

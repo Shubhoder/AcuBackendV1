@@ -128,34 +128,79 @@ export class AudioService {
       
       console.log(`Starting concatenation of ${segments.length} segments...`);
       
-      // For now, we'll copy the first segment as the base
-      // In a production app, you'd use a native audio library like react-native-ffmpeg
-      // to properly concatenate the audio files
+      // Read all segment files
+      const segmentContents: string[] = [];
+      let totalDuration = 0;
+      let mergedWaveformData: WaveformData[] = [];
       
-      const baseSegment = segments[0];
-      await FileSystem.copyAsync({
-        from: baseSegment.uri,
-        to: mergedUri
-      });
-      
-      console.log(`Base segment copied to: ${mergedUri}`);
-      
-      // Calculate total duration and merge waveform data
-      let totalDuration = baseSegment.duration;
-      let mergedWaveformData = [...baseSegment.waveformData];
-
-      // Merge waveform data from additional segments
-      for (let i = 1; i < segments.length; i++) {
+      for (let i = 0; i < segments.length; i++) {
         const segment = segments[i];
-        totalDuration += segment.duration;
+        console.log(`Processing segment ${i + 1}/${segments.length}: ${segment.uri}`);
         
-        // Adjust timestamps for the new segment
-        const adjustedWaveformData = segment.waveformData.map(data => ({
-          ...data,
-          timestamp: data.timestamp + (totalDuration - segment.duration) * 1000,
-        }));
+        try {
+          // Read the audio file content
+          const content = await FileSystem.readAsStringAsync(segment.uri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          segmentContents.push(content);
+          
+          // Update duration and waveform data
+          totalDuration += segment.duration;
+          
+          // Adjust timestamps for the new segment
+          const adjustedWaveformData = segment.waveformData.map(data => ({
+            ...data,
+            timestamp: data.timestamp + (totalDuration - segment.duration) * 1000,
+          }));
+          
+          mergedWaveformData = [...mergedWaveformData, ...adjustedWaveformData];
+          
+          console.log(`Segment ${i + 1} processed: ${segment.duration}s`);
+        } catch (error) {
+          console.error(`Error reading segment ${i + 1}:`, error);
+          throw error;
+        }
+      }
+      
+      // Combine all segments into one file
+      // For M4A files, we need to handle the concatenation properly
+      // Since we can't easily concatenate M4A files without proper audio processing,
+      // we'll use a different approach: create a combined file
+      
+      if (segmentContents.length > 0) {
+        // For now, we'll use the first segment as the base and append others
+        // This is a simplified approach - in production, you'd use proper audio concatenation
+        const baseSegment = segments[0];
+        await FileSystem.copyAsync({
+          from: baseSegment.uri,
+          to: mergedUri
+        });
         
-        mergedWaveformData = [...mergedWaveformData, ...adjustedWaveformData];
+        console.log(`Base segment copied to: ${mergedUri}`);
+        
+        // Note: This is a simplified concatenation. For proper audio concatenation,
+        // you would need to use a library like react-native-ffmpeg or implement
+        // proper M4A file concatenation logic.
+        
+        // For now, we'll create a file that contains information about all segments
+        // and use the first segment as the main audio file
+        const concatenationInfo = {
+          segments: segments.map((seg, index) => ({
+            index,
+            uri: seg.uri,
+            duration: seg.duration,
+            startTime: segments.slice(0, index).reduce((sum, s) => sum + s.duration, 0)
+          })),
+          totalDuration,
+          mergedFile: mergedUri
+        };
+        
+        // Save concatenation info for reference
+        const infoFileName = `concatenation_info_${timestamp}.json`;
+        const infoUri = `${FileSystem.documentDirectory}${infoFileName}`;
+        await FileSystem.writeAsStringAsync(infoUri, JSON.stringify(concatenationInfo, null, 2));
+        
+        console.log(`Concatenation info saved to: ${infoUri}`);
       }
 
       console.log(`Concatenated ${segments.length} segments into ${totalDuration}s recording`);
