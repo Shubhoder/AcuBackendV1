@@ -100,15 +100,6 @@ export const AudioCard: React.FC<AudioCardProps> = ({
     return 0;
   }, []);
 
-  // Convert waveformData from number[] to WaveformData[] format
-  const convertWaveformData = useCallback((): { amplitude: number; timestamp: number }[] => {
-    if (!waveformData) return [];
-    return waveformData.map((amplitude, index) => ({
-      amplitude: Math.max(0, Math.min(1, amplitude)), // Ensure amplitude is between 0-1
-      timestamp: index * 100, // Approximate timestamp
-    }));
-  }, [waveformData]);
-
   // Progress calculation
   const current = Math.floor(localCurrentTime);
   const total = localDuration > 0 ? Math.floor(localDuration) : parseDurationToSeconds(duration);
@@ -124,15 +115,31 @@ export const AudioCard: React.FC<AudioCardProps> = ({
     }
   }, [player, total]);
 
-  const handleRewind = useCallback(async () => {
-    const newTime = Math.max(0, localCurrentTime - 10);
-    await handleSeek(newTime);
-  }, [localCurrentTime, handleSeek]);
-
-  const handleForward = useCallback(async () => {
-    const newTime = Math.min(total, localCurrentTime + 10);
-    await handleSeek(newTime);
-  }, [localCurrentTime, total, handleSeek]);
+  // Compact waveform display for collapsed state
+  const renderCompactWaveform = () => {
+    if (!waveformData || waveformData.length === 0) return null;
+    
+    const maxBars = 20; // Show limited bars in compact mode
+    const step = Math.max(1, Math.floor(waveformData.length / maxBars));
+    const compactData = waveformData.filter((_, index) => index % step === 0).slice(0, maxBars);
+    
+    return (
+      <View style={styles.compactWaveform}>
+        {compactData.map((amplitude, index) => (
+          <View
+            key={index}
+            style={[
+              styles.compactBar,
+              {
+                height: Math.max(4, amplitude * 20),
+                backgroundColor: localIsPlaying ? '#00AEEF' : '#E5E7EB',
+              }
+            ]}
+          />
+        ))}
+      </View>
+    );
+  };
 
   return (
     <TouchableOpacity 
@@ -179,6 +186,9 @@ export const AudioCard: React.FC<AudioCardProps> = ({
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.sender}>{sender}</Text>
           <Text style={styles.date}>{date}</Text>
+          
+          {/* Compact waveform in collapsed state */}
+          {!expanded && renderCompactWaveform()}
         </View>
         <Text style={styles.duration}>{duration}</Text>
       </View>
@@ -186,17 +196,21 @@ export const AudioCard: React.FC<AudioCardProps> = ({
       {/* Expanded player UI */}
       {expanded && (
         <View style={styles.expandedContent}>
-          {/* Waveform Display */}
-          {waveformData && waveformData.length > 0 && (
+          {/* Full Waveform Display */}
+          {uri && (
             <View style={styles.waveformContainer}>
               <PlaybackWaveform
-                waveformData={convertWaveformData()}
-                duration={total}
-                currentTime={localCurrentTime}
+                audioPath={uri}
                 isPlaying={localIsPlaying}
+                currentTime={localCurrentTime}
+                duration={total}
                 onSeek={handleSeek}
-                onRewind={handleRewind}
-                onForward={handleForward}
+                onPlayerStateChange={(playerState) => {
+                  console.log('AudioCard Player State:', playerState);
+                }}
+                onPanStateChange={(isMoving) => {
+                  console.log('AudioCard Pan State:', isMoving);
+                }}
               />
             </View>
           )}
@@ -354,5 +368,18 @@ const styles = StyleSheet.create({
   actionItem: {
     alignItems: "center",
     marginHorizontal: 25,
+  },
+  compactWaveform: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    height: 20,
+    paddingHorizontal: 4,
+  },
+  compactBar: {
+    width: 2,
+    borderRadius: 1,
+    marginHorizontal: 1,
   },
 });

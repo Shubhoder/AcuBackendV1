@@ -26,8 +26,8 @@ export const RealTimeWaveform: React.FC<RealTimeWaveformProps> = ({
   const [waveformData, setWaveformData] = useState<WaveformData[]>([]);
   const [currentAmplitude, setCurrentAmplitude] = useState(0);
   const animationRef = useRef<Animated.Value>(new Animated.Value(0));
-  const dataIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const animationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const dataIntervalRef = useRef<number | null>(null);
+  const animationIntervalRef = useRef<number | null>(null);
   const lastUpdateTime = useRef(0);
 
   // Optimized amplitude generation with memoization

@@ -45,15 +45,8 @@ export const PlaybackWaveform: React.FC<PlaybackWaveformProps> = ({
       const progress = currentTime / duration;
       console.log('📊 Expo Audio Progress - Current:', currentTime.toFixed(2), 'Duration:', duration.toFixed(2), 'Progress:', progress.toFixed(3));
       
-      // Try to sync waveform position
-      try {
-        // @ts-ignore - seekTo might be available
-        if (waveformRef.current.seekTo) {
-          waveformRef.current.seekTo(progress);
-        }
-      } catch (error) {
-        console.log('❌ Waveform seek not available:', error);
-      }
+      // Note: seekTo is not available in the current waveform library version
+      // The waveform will sync automatically through the player state
     }
   }, [currentTime, duration]);
 
