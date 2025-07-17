@@ -1,61 +1,742 @@
-import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
-  Image,
-  SafeAreaView,
+  Alert,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  Dimensions,
+  ScrollView,
 } from "react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AudioPlayer, AudioRecorder } from '../../components';
 
-import { Colors, Spacing, Typography } from "../../constants";
+import { PhotoUploadModal } from '../../components/PhotoUploadModal';
+import { PatientAddModal } from '../../components/PatientAddModal';
+import { useOutboxContext } from '../../contexts/OutboxContext';
+import { useAudioContext } from '../../contexts/AudioContext';
+import { AudioService, WaveformData, AudioSegment } from '../../services/audioService';
+import { AudioWaveformService } from '../../services/audioWaveformService';
+
+// const { width, height } = Dimensions.get('window');
+const RECORDING_COUNTER_KEY = 'RECORDING_COUNTER_KEY';
 
 export default function RecordScreen() {
-  const router = useRouter();
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.logoContainer}>
+  // --- State for App Flow ---
+  const [appMode, setAppMode] = useState<'initial' | 'recording' | 'playback'>('initial');
+  const [recordedUri, setRecordedUri] = useState<string | null>(null);
+  const [recordedSegments, setRecordedSegments] = useState<AudioSegment[]>([]);
+  const [isRecordingPaused, setIsRecordingPaused] = useState(false);
+  const [isAppending, setIsAppending] = useState(false);
+  const [totalRecordingDuration, setTotalRecordingDuration] = useState(0);
+  const [currentSegmentDuration, setCurrentSegmentDuration] = useState(0);
+  const [uploadModalVisible, setUploadModalVisible] = useState(false);
+  const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
+  const [recordingCounter, setRecordingCounter] = useState(1);
+  const [patientModalVisible, setPatientModalVisible] = useState(false);
+  const [patientName, setPatientName] = useState<string | null>(null);
+  const [waveformData, setWaveformData] = useState<WaveformData[]>([]);
+  const [audioRecorder, setAudioRecorder] = useState<any>(null); // Used by AudioRecorder component
+  const [isGeneratingWaveform, setIsGeneratingWaveform] = useState(false);
+  const [isConcatenating, setIsConcatenating] = useState(false);
+  const recordingStartTime = useRef<number>(0);
+  
+  // --- Session Management for Edit & Append ---
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [segmentIndex, setSegmentIndex] = useState(0);
+  
+  // Outbox context
+  const { addRecording } = useOutboxContext();
+  
+  // Audio context for waveform data
+  const { setResumeMode, clearWaveformData } = useAudioContext();
+
+  // --- Load and persist recording counter ---
+  useEffect(() => {
+    (async () => {
+      const stored = await AsyncStorage.getItem(RECORDING_COUNTER_KEY);
+      if (stored && !isNaN(Number(stored))) {
+        setRecordingCounter(Number(stored));
+      }
+    })();
+  }, []);
+
+  const incrementRecordingCounter = async () => {
+    const next = recordingCounter + 1;
+    setRecordingCounter(next);
+    await AsyncStorage.setItem(RECORDING_COUNTER_KEY, String(next));
+  };
+
+  // --- Recording Handlers ---
+  const handleRecordingStart = () => {
+    setAppMode('recording');
+    setIsRecordingPaused(false);
+    if (!isAppending) {
+      // Start new session
+      const sessionId = `session_${Date.now()}_${recordingCounter}`;
+      setCurrentSessionId(sessionId);
+      setSegmentIndex(0);
+      recordingStartTime.current = Date.now();
+      setTotalRecordingDuration(0);
+      setCurrentSegmentDuration(0);
+      clearWaveformData(); // Clear previous waveform data
+      console.log('Starting new recording session:', sessionId);
+    } else {
+      // Continue existing session
+      setSegmentIndex(prev => prev + 1);
+      console.log('Appending to existing recording... Session:', currentSessionId, 'Segment:', segmentIndex + 1);
+      setResumeMode(true); // Enable resume mode for waveform
+    }
+  };
+
+  const handleRecordingStop = () => {
+    setAppMode('playback');
+    setIsRecordingPaused(false);
+    setIsAppending(false);
+    setResumeMode(false); // Disable resume mode
+  };
+
+  const handleRecordingPause = () => {
+    setIsRecordingPaused(true);
+  };
+
+  const handleRecordingResume = () => {
+    setIsRecordingPaused(false);
+  };
+
+  const handleWaveformDataUpdate = (data: WaveformData[]) => {
+    setWaveformData(data);
+  };
+
+  const handleDurationUpdate = useCallback((duration: number) => {
+    setTotalRecordingDuration(duration);
+    // Calculate current segment duration
+    const previousTotal = recordedSegments.reduce((sum, segment) => sum + segment.duration, 0);
+    setCurrentSegmentDuration(duration - previousTotal);
+  }, [recordedSegments]);
+
+
+
+
+  const handleRecordingComplete = async (uri: string) => {
+    try {
+      // Create audio segment for this recording
+      const segment: AudioSegment = {
+        uri,
+        duration: currentSegmentDuration,
+        waveformData: [...waveformData],
+      };
+
+      if (isAppending) {
+        // Add new segment to existing segments
+        const updatedSegments = [...recordedSegments, segment];
+        setRecordedSegments(updatedSegments);
+        console.log('New segment added. Total segments:', updatedSegments.length);
+        
+        // Concatenate all segments with file management
+        setIsConcatenating(true);
+        const concatenatedResult = await AudioService.concatenateAudioSegmentsWithFileManagement(
+          updatedSegments, 
+          currentSessionId!
+        );
+        
+        setRecordedUri(concatenatedResult.uri);
+        setTotalRecordingDuration(concatenatedResult.duration);
+        setWaveformData(concatenatedResult.waveformData);
+        
+        console.log('Segments concatenated successfully with file management');
+      } else {
+        // First recording - just use this segment
+        setRecordedSegments([segment]);
+        setRecordedUri(uri);
+        setTotalRecordingDuration(currentSegmentDuration);
+      }
+
+      setAppMode('playback');
+      setIsAppending(false);
+      setCurrentSegmentDuration(0);
+
+      // Generate real waveform from the final audio file
+      setIsGeneratingWaveform(true);
+      try {
+        const finalUri = isAppending ? recordedUri : uri;
+        const finalDuration = isAppending ? totalRecordingDuration : currentSegmentDuration;
+        
+        const realWaveformData = await AudioWaveformService.generateWaveformFromAudio(
+          finalUri!, 
+          finalDuration
+        );
+        
+        // Convert to the format expected by the app
+        const convertedWaveformData: WaveformData[] = realWaveformData.map(data => ({
+          amplitude: data.amplitude,
+          timestamp: data.timestamp,
+        }));
+
+        setWaveformData(convertedWaveformData);
+
+        // Save recording to outbox with real waveform data
+        const now = new Date();
+        const dateRecorded = now.toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        });
+        const timeRecorded = now.toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: true 
+        });
+
+        await addRecording({
+          title: `Dict #${recordingCounter}`,
+          filename: `recording_${recordingCounter}.m4a`,
+          uri: finalUri!,
+          duration: finalDuration,
+          dateRecorded,
+          timeRecorded,
+          patientName: patientName || undefined,
+          waveformData: convertedWaveformData,
+        });
+
+        console.log('Recording saved to outbox with real waveform data');
+      } catch (error) {
+        console.error('Error generating waveform:', error);
+        // Fallback to synthetic waveform
+        const fallbackWaveform = AudioService.generateWaveformData(totalRecordingDuration);
+        setWaveformData(fallbackWaveform);
+      } finally {
+        setIsGeneratingWaveform(false);
+        setIsConcatenating(false);
+      }
+    } catch (error) {
+      console.error('Error handling recording completion:', error);
+      Alert.alert('Error', 'Failed to process recording. Please try again.');
+      setIsConcatenating(false);
+    }
+  };
+
+  // --- Playback Handlers ---
+  const handlePlaybackComplete = () => {
+    console.log('Playback completed');
+  };
+
+  const handleEditResume = () => {
+    setIsAppending(true);
+    setAppMode('recording');
+    setResumeMode(true); // Enable resume mode
+    setCurrentSegmentDuration(0); // Reset current segment duration
+    console.log('Edit/Resume: Starting new recording session to append');
+  };
+
+  // --- Navigation Handlers ---
+  const handleStartNewRecording = async () => {
+    // Clean up temporary files for current session if exists
+    if (currentSessionId) {
+      try {
+        await AudioService.cleanupTempFiles(currentSessionId);
+        console.log('Cleaned up temp files for session:', currentSessionId);
+      } catch (error) {
+        console.error('Error cleaning up temp files:', error);
+      }
+    }
+    
+    // Reset all state
+    setRecordedUri(null);
+    setRecordedSegments([]);
+    setIsAppending(false);
+    setTotalRecordingDuration(0);
+    setCurrentSegmentDuration(0);
+    setWaveformData([]);
+    setAppMode('initial');
+    setPatientName(null);
+    setCurrentSessionId(null);
+    setSegmentIndex(0);
+    clearWaveformData(); // Clear waveform data
+    await incrementRecordingCounter();
+    
+    console.log('Started new recording session');
+  };
+
+  // --- Patient Modal Handlers ---
+  const handlePatientSave = (name: string) => {
+    setPatientName(name);
+    setPatientModalVisible(false);
+  };
+
+  // --- Photo Upload Handlers ---
+  const handleTakePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission required", "Camera permission is needed.");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+    if (!result.canceled) {
+      setSelectedPhotos(prev => [...prev, result.assets[0].uri]);
+    }
+  };
+
+  const handleChoosePhoto = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission required", "Gallery permission is needed.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+    if (!result.canceled) {
+      const newPhotos = result.assets.map((a) => a.uri);
+      setSelectedPhotos(prev => [...prev, ...newPhotos]);
+    }
+  };
+
+  const handleRemovePhoto = (uri: string) => {
+    setSelectedPhotos(prev => prev.filter(photo => photo !== uri));
+  };
+
+  const handleAddPhotos = () => {
+    setUploadModalVisible(false);
+    setSelectedPhotos([]);
+  };
+
+  // --- Waveform Generation ---
+  // const generateWaveform = () => {
+  //   const heights = [15, 30, 10, 35, 20, 40, 15, 30, 10, 35, 20, 40, 15, 20];
+  //   return heights.map((height, i) => (
+  //     <View
+  //       key={i}
+  //       style={{
+  //         width: 4,
+  //         height,
+  //         backgroundColor: "#00AEEF",
+  //         marginHorizontal: 1,
+  //         borderRadius: 2,
+  //       }}
+  //     />
+  //   ));
+  // };
+
+  // --- Render Logic based on appMode ---
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <View style={styles.headerContent}>
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>{`Dict #${recordingCounter}`}</Text>
           <TouchableOpacity
-            onPress={() => router.push("../recordingScreen/audio-recording")}
+            onPress={() => setPatientModalVisible(true)}
+            style={styles.personAddButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Image
-              source={require("../../assets/mic.png")}
-              style={{ width: 120, height: 120 }}
-              resizeMode="contain"
-            />
+            <Ionicons name="person-add-outline" size={24} color="#00AEEF" />
           </TouchableOpacity>
         </View>
-        <Text style={styles.subtitle}>Start recording </Text>
+        {patientName && (
+          <View style={styles.patientRow}>
+            <View style={styles.patientBadge}>
+              <Ionicons name="person" size={16} color="#00AEEF" style={{ marginRight: 6 }} />
+              <Text style={styles.patientName}>{patientName}</Text>
+            </View>
+          </View>
+        )}
       </View>
-    </SafeAreaView>
+    </View>
+  );
+
+  const renderInitialScreen = () => (
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <View style={styles.gradientBackground}>
+        {renderHeader()}
+        <View style={styles.content}>
+          <TouchableOpacity
+            onPress={() => setAppMode('recording')}
+            style={styles.recordButton}
+            activeOpacity={0.8}
+          >
+            <View style={styles.recordButtonInner}>
+              <Ionicons name="mic" size={50} color="#fff" />
+            </View>
+          </TouchableOpacity>
+          
+          <View style={styles.featuresContainer}>
+            <View style={styles.featureItem}>
+              <Ionicons name="checkmark-circle" size={20} color="#00AEEF" />
+              <Text style={styles.featureText}>High-quality audio recording</Text>
+            </View>
+            <View style={styles.featureItem}>
+              <Ionicons name="checkmark-circle" size={20} color="#00AEEF" />
+              <Text style={styles.featureText}>Automatic save to outbox</Text>
+            </View>
+            <View style={styles.featureItem}>
+              <Ionicons name="checkmark-circle" size={20} color="#00AEEF" />
+              <Text style={styles.featureText}>Patient assignment</Text>
+            </View>
+            <View style={styles.featureItem}>
+              <Ionicons name="checkmark-circle" size={20} color="#00AEEF" />
+              <Text style={styles.featureText}>Edit & append functionality</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+
+  const renderRecordingUI = () => (
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <View style={styles.gradientBackground}>
+        {renderHeader()}
+        
+        <View style={styles.recordingContainer}>
+          <AudioRecorder
+            onRecordingComplete={handleRecordingComplete}
+            onRecordingStart={handleRecordingStart}
+            onRecordingStop={handleRecordingStop}
+            onRecordingPause={handleRecordingPause}
+            onRecordingResume={handleRecordingResume}
+            isPaused={isRecordingPaused}
+            onWaveformDataUpdate={handleWaveformDataUpdate}
+            onRecorderReady={setAudioRecorder}
+            isAppending={isAppending}
+            previousDuration={totalRecordingDuration - currentSegmentDuration}
+            onDurationUpdate={handleDurationUpdate}
+          />
+        </View>
+      </View>
+    </View>
+  );
+
+  const renderPlaybackUI = () => (
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <View style={styles.gradientBackground}>
+        {renderHeader()}
+        
+        <View style={styles.playbackContainer}>
+          <View style={styles.audioCard}>
+            <View style={styles.audioHeader}>
+              <Ionicons name="musical-notes" size={24} color="#00AEEF" />
+              <Text style={styles.audioTitle}>Recording Preview</Text>
+              {recordedSegments.length > 1 && (
+                <View style={styles.segmentsBadge}>
+                  <Text style={styles.segmentsText}>{recordedSegments.length} segments</Text>
+                </View>
+              )}
+            </View>
+            
+            {(isGeneratingWaveform || isConcatenating) && (
+              <View style={styles.waveformLoadingContainer}>
+                <Text style={styles.waveformLoadingText}>
+                  {isConcatenating ? 'Merging recordings...' : 'Generating waveform...'}
+                </Text>
+              </View>
+            )}
+            
+            {recordedUri && !isGeneratingWaveform && !isConcatenating && (
+              <AudioPlayer
+                audioUri={recordedUri}
+                onPlaybackComplete={handlePlaybackComplete}
+                onEditResume={handleEditResume}
+                waveformData={waveformData}
+                audioDuration={totalRecordingDuration}
+              />
+            )}
+          </View>
+          
+          <View style={styles.actionsCard}>
+            <View style={styles.actionRow}>
+              <TouchableOpacity style={styles.actionButton}>
+                <View style={styles.actionIconContainer}>
+                  <Ionicons name="trash-outline" size={24} color="#FF6B6B" />
+                </View>
+                <Text style={styles.actionText}>Discard</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.actionButton}>
+                <View style={styles.actionIconContainer}>
+                  <Ionicons name="arrow-up" size={24} color="#00AEEF" />
+                </View>
+                <Text style={styles.actionText}>Send</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.actionButton}>
+                <View style={styles.actionIconContainer}>
+                  <Ionicons name="copy-outline" size={24} color="#00AEEF" />
+                </View>
+                <Text style={styles.actionText}>Draft</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => setUploadModalVisible(true)}
+              >
+                <View style={styles.actionIconContainer}>
+                  <Ionicons name="camera-outline" size={24} color="#00AEEF" />
+                </View>
+                <Text style={styles.actionText}>Upload</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+          
+          <TouchableOpacity 
+            style={styles.newRecordingButton}
+            onPress={handleStartNewRecording}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add-circle" size={24} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={styles.newRecordingText}>New Recording</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </ScrollView>
+  );
+
+  return (
+    <View style={styles.container}>
+      {appMode === 'initial' && renderInitialScreen()}
+      {appMode === 'recording' && renderRecordingUI()}
+      {appMode === 'playback' && renderPlaybackUI()}
+      <PhotoUploadModal
+        visible={uploadModalVisible}
+        onClose={() => setUploadModalVisible(false)}
+        onTakePhoto={handleTakePhoto}
+        onChoosePhoto={handleChoosePhoto}
+        selectedPhotos={selectedPhotos}
+        onRemovePhoto={handleRemovePhoto}
+        onAdd={handleAddPhotos}
+      />
+      <PatientAddModal
+        visible={patientModalVisible}
+        onClose={() => setPatientModalVisible(false)}
+        onSave={handlePatientSave}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: "#f8fafc",
+  },
+  gradientBackground: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
+  header: {
+    paddingTop: 50,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    backgroundColor: 'transparent',
+  },
+  headerContent: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  title: { 
+    fontSize: 20, 
+    fontWeight: "700", 
+    color: "#1e293b",
+    letterSpacing: -0.5,
+  },
+  personAddButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  patientRow: {
+    marginTop: 8,
+  },
+  patientBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e0f2fe',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    alignSelf: 'flex-start',
+  },
+  patientName: {
+    fontSize: 12,
+    color: '#00AEEF',
+    fontWeight: '600',
   },
   content: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: Spacing.lg,
+    paddingHorizontal: 24,
+    paddingBottom: 20,
   },
-  title: {
-    fontSize: Typography.sizes.xxxl,
-    fontWeight: Typography.weights.bold,
-    color: Colors.text.primary,
-    marginBottom: Spacing.md,
+  recordButton: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#00AEEF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 30,
+    shadowColor: "#00AEEF",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 12,
   },
-  logoContainer: {
+  recordButtonInner: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#00AEEF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 4,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  featuresContainer: {
+    width: '100%',
+    maxWidth: 280,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    paddingHorizontal: 16,
+  },
+  featureText: {
+    fontSize: 13,
+    color: '#64748b',
+    marginLeft: 10,
+    fontWeight: '500',
+  },
+  recordingContainer: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+  },
+  playbackContainer: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingBottom: 20,
+  },
+  audioCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 12,
+    overflow: 'hidden', // Prevent content overflow
+  },
+  audioHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  audioTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginLeft: 12,
+    flex: 1,
+  },
+  segmentsBadge: {
+    backgroundColor: '#e0f2fe',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  segmentsText: {
+    fontSize: 12,
+    color: '#00AEEF',
+    fontWeight: '600',
+  },
+  waveformLoadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  waveformLoadingText: {
+    fontSize: 14,
+    color: '#64748b',
+    fontStyle: 'italic',
+  },
+  actionsCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  actionRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+  },
+  actionButton: { 
     alignItems: "center",
-    marginVertical: 30,
+    flex: 1,
   },
-  subtitle: {
-    fontSize: Typography.sizes.md,
-    color: Colors.text.secondary,
-    textAlign: "center",
+  actionIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#f8fafc',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  actionText: { 
+    color: "#64748b", 
+    fontSize: 12, 
+    fontWeight: '500',
+  },
+  newRecordingButton: {
+    backgroundColor: '#00AEEF',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: "#00AEEF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  newRecordingText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

@@ -44,11 +44,13 @@ export default function HomeScreen() {
   const handleStatsPress = (type: 'pending' | 'sent') => {
     // Handle stats navigation or action
     // TODO: Implement navigation to stats screen
+    console.log(`Stats pressed: ${type}`);
   };
 
   const handleRecordPress = () => {
-    // Handle navigation to record screen
-    // TODO: Implement navigation to record screen
+    // This will be handled by the dynamic rendering in record.tsx
+    // The RecordingCard component will trigger the recording flow
+    console.log('Record button pressed - recording flow initiated');
   };
 
   const handleTogglePlay = (id: string) => {
