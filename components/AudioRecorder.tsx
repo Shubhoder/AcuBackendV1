@@ -8,7 +8,7 @@ import {
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Button, StyleSheet, Text, View } from 'react-native';
 import { formatTime } from '../utils/helpers';
-import { RealTimeWaveform } from './index';
+import { RealTimeWaveform } from './RealTimeWaveform';
 import { WaveformData } from '../services/audioService';
 
 interface AudioRecorderProps {

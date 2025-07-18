@@ -1,13 +1,13 @@
 import { Feather } from "@expo/vector-icons";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, memo } from "react";
 import {
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { PlaybackWaveform } from "./PlaybackWaveform";
+import { useAudioContext } from "../contexts/AudioContext";
 
 export interface AudioCardProps {
   id: number | string;
@@ -22,7 +22,6 @@ export interface AudioCardProps {
   waveformData?: number[];
   currentTime?: number;
   onExpand?: () => void;
-  onPlayPause?: () => void;
   onToggleSelection?: () => void;
   showActions?: boolean;
   onDelete?: () => void;
@@ -30,116 +29,130 @@ export interface AudioCardProps {
   onShare?: () => void;
 }
 
-export const AudioCard: React.FC<AudioCardProps> = ({
+export const AudioCard: React.FC<AudioCardProps> = memo(({
   id, title, sender, date, duration, uri,
   expanded = false, isPlaying = false, isSelected = false,
   waveformData, currentTime = 0,
-  onExpand, onPlayPause, onToggleSelection,
+  onExpand, onToggleSelection,
   showActions = false, onDelete, onSend, onShare
 }) => {
-  const [localCurrentTime, setLocalCurrentTime] = useState(currentTime);
-  const [localIsPlaying, setLocalIsPlaying] = useState(false);
-  const [localDuration, setLocalDuration] = useState(0);
+  const { 
+    currentAudioId, 
+    isPlaying: globalIsPlaying, 
+    currentTime: globalCurrentTime, 
+    duration: globalDuration,
+    playAudio, 
+    pauseAudio, 
+    seekTo 
+  } = useAudioContext();
   
-  // Create audio player if URI is provided
-  const player = uri ? useAudioPlayer(uri) : null;
-  const status = player ? useAudioPlayerStatus(player) : null;
+  // Local state for immediate button feedback
+  const [isButtonPressed, setIsButtonPressed] = useState(false);
+  
+  // Check if this card is the currently playing audio
+  const isThisAudioPlaying = currentAudioId === id.toString();
+  
+  // Use global state when this audio is playing, otherwise use local state
+  const effectiveIsPlaying = isThisAudioPlaying ? globalIsPlaying : false;
+  const effectiveCurrentTime = isThisAudioPlaying ? globalCurrentTime : 0;
+  const effectiveDuration = isThisAudioPlaying ? globalDuration : 0;
 
-  // Update local playing state when prop changes
-  useEffect(() => {
-    setLocalIsPlaying(isPlaying);
-  }, [isPlaying]);
-
-  // Handle play/pause logic
-  useEffect(() => {
-    if (player) {
-      if (localIsPlaying) {
-        player.play();
+  // Handle play/pause button press with immediate feedback
+  const handlePlayPause = useCallback(async () => {
+    if (!uri) {
+      console.error('❌ No URI available for audio playback');
+      return;
+    }
+    
+    // Immediate visual feedback
+    setIsButtonPressed(true);
+    
+    try {
+      if (isThisAudioPlaying && globalIsPlaying) {
+        // Pause current audio
+        console.log('⏸️ Pausing audio from card:', id);
+        await pauseAudio();
       } else {
-        player.pause();
+        // Play this audio (will stop any other playing audio)
+        console.log('▶️ Playing audio from card:', id, 'URI:', uri);
+        await playAudio(id.toString(), uri);
       }
+    } catch (error) {
+      console.error('❌ Error in handlePlayPause:', error);
+    } finally {
+      // Reset button state after a short delay
+      setTimeout(() => {
+        setIsButtonPressed(false);
+      }, 150);
     }
-  }, [localIsPlaying, player]);
-
-  // Update current time from audio status with improved precision
-  useEffect(() => {
-    if (status) {
-      const newCurrentTime = status.currentTime || 0;
-      const newDuration = status.duration || 0;
-      
-      setLocalCurrentTime(newCurrentTime);
-      setLocalDuration(newDuration);
-    }
-  }, [status?.currentTime, status?.duration]);
-
-  // Handle play/pause button press
-  const handlePlayPause = useCallback(() => {
-    if (player) {
-      if (localIsPlaying) {
-        player.pause();
-        setLocalIsPlaying(false);
-      } else {
-        player.play();
-        setLocalIsPlaying(true);
-      }
-    }
-    // Also call the parent callback if provided
-    if (onPlayPause) {
-      onPlayPause();
-    }
-  }, [player, localIsPlaying, onPlayPause]);
+  }, [uri, isThisAudioPlaying, globalIsPlaying, pauseAudio, playAudio, id]);
 
   // Helper function to parse duration string to seconds
   const parseDurationToSeconds = useCallback((durationStr: string): number => {
-    const parts = durationStr.split(':').map(Number);
-    if (parts.length === 2) {
-      return parts[0] * 60 + parts[1];
-    } else if (parts.length === 3) {
-      return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    try {
+      const parts = durationStr.split(':').map(Number);
+      if (parts.length === 2) {
+        return parts[0] * 60 + parts[1];
+      } else if (parts.length === 3) {
+        return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      }
+      return 0;
+    } catch (error) {
+      console.error('❌ Error parsing duration:', error);
+      return 0;
     }
-    return 0;
   }, []);
 
-  // Progress calculation
-  const current = Math.floor(localCurrentTime);
-  const total = localDuration > 0 ? Math.floor(localDuration) : parseDurationToSeconds(duration);
+  // Progress calculation - use global duration if available, otherwise parse from string
+  const total = isThisAudioPlaying && effectiveDuration > 0 
+    ? effectiveDuration 
+    : parseDurationToSeconds(duration);
 
   const handleSeek = useCallback(async (time: number) => {
-    if (player) {
+    if (isThisAudioPlaying && uri) {
       try {
-        const clampedTime = Math.max(0, Math.min(total, time));
-        await player.seekTo(clampedTime);
-      } catch (err) {
-        console.error('Failed to seek audio', err);
+        console.log('🎯 AudioCard seeking to:', time.toFixed(2));
+        await seekTo(time);
+      } catch (error) {
+        console.error('❌ Error seeking in AudioCard:', error);
       }
     }
-  }, [player, total]);
+  }, [isThisAudioPlaying, seekTo, uri]);
 
   // Compact waveform display for collapsed state
   const renderCompactWaveform = () => {
     if (!waveformData || waveformData.length === 0) return null;
     
-    const maxBars = 20; // Show limited bars in compact mode
-    const step = Math.max(1, Math.floor(waveformData.length / maxBars));
-    const compactData = waveformData.filter((_, index) => index % step === 0).slice(0, maxBars);
-    
-    return (
-      <View style={styles.compactWaveform}>
-        {compactData.map((amplitude, index) => (
-          <View
-            key={index}
-            style={[
-              styles.compactBar,
-              {
-                height: Math.max(4, amplitude * 20),
-                backgroundColor: localIsPlaying ? '#00AEEF' : '#E5E7EB',
-              }
-            ]}
-          />
-        ))}
-      </View>
-    );
+    try {
+      const maxBars = 20; // Show limited bars in compact mode
+      const step = Math.max(1, Math.floor(waveformData.length / maxBars));
+      const compactData = waveformData.filter((_, index) => index % step === 0).slice(0, maxBars);
+      
+      return (
+        <View style={styles.compactWaveform}>
+          {compactData.map((amplitude, index) => (
+            <View
+              key={index}
+              style={[
+                styles.compactBar,
+                {
+                  height: Math.max(4, (amplitude || 0) * 20),
+                  backgroundColor: effectiveIsPlaying ? '#00AEEF' : '#E5E7EB',
+                }
+              ]}
+            />
+          ))}
+        </View>
+      );
+    } catch (error) {
+      console.error('❌ Error rendering compact waveform:', error);
+      return null;
+    }
   };
+
+  // Determine button state and appearance
+  const buttonIsPlaying = effectiveIsPlaying || isButtonPressed;
+  const buttonBackgroundColor = buttonIsPlaying ? "#00AEEF" : "#E5E7EB";
 
   return (
     <TouchableOpacity 
@@ -164,15 +177,17 @@ export const AudioCard: React.FC<AudioCardProps> = ({
           </TouchableOpacity>
         )}
 
-        {/* Play/Pause button */}
+        {/* Play/Pause button with improved responsiveness */}
         <TouchableOpacity
           onPress={handlePlayPause}
           style={[
             styles.playButton,
-            { backgroundColor: localIsPlaying ? "#00AEEF" : "#E5E7EB" }
+            { backgroundColor: buttonBackgroundColor },
+            isButtonPressed && styles.playButtonPressed
           ]}
+          activeOpacity={0.7}
         >
-          {localIsPlaying ? (
+          {buttonIsPlaying ? (
             <View style={styles.pauseIcon}>
               <View style={styles.pauseBar} />
               <View style={styles.pauseBar} />
@@ -201,15 +216,15 @@ export const AudioCard: React.FC<AudioCardProps> = ({
             <View style={styles.waveformContainer}>
               <PlaybackWaveform
                 audioPath={uri}
-                isPlaying={localIsPlaying}
-                currentTime={localCurrentTime}
+                isPlaying={effectiveIsPlaying}
+                currentTime={effectiveCurrentTime}
                 duration={total}
                 onSeek={handleSeek}
                 onPlayerStateChange={(playerState) => {
-                  console.log('AudioCard Player State:', playerState);
+                  console.log('🎵 AudioCard Player State:', playerState);
                 }}
                 onPanStateChange={(isMoving) => {
-                  console.log('AudioCard Pan State:', isMoving);
+                  console.log('👆 AudioCard Pan State:', isMoving);
                 }}
               />
             </View>
@@ -250,7 +265,9 @@ export const AudioCard: React.FC<AudioCardProps> = ({
       )}
     </TouchableOpacity>
   );
-};
+});
+
+AudioCard.displayName = 'AudioCard';
 
 const styles = StyleSheet.create({
   container: {
@@ -284,6 +301,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: 10,
+  },
+  playButtonPressed: {
+    transform: [{ scale: 0.95 }],
   },
   pauseIcon: {
     flexDirection: "row",

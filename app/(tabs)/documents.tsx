@@ -1,4 +1,3 @@
-import { Feather } from "@expo/vector-icons";
 import { useState } from "react";
 import {
   FlatList,
@@ -8,8 +7,7 @@ import {
   View,
 } from "react-native";
 import { useOutboxContext } from "../../contexts/OutboxContext";
-import { useOutboxPlayer } from "../../hooks/useOutboxPlayer";
-import { useAudioActions } from "../../hooks/useAudioActions";
+import { useAudioContext } from "../../contexts/AudioContext";
 import { AudioCard } from "../../components/audio";
 import { AudioService } from "../../services/audioService";
 
@@ -31,19 +29,15 @@ const DocumentsScreen = () => {
 
   const [activeTab, setActiveTab] = useState<TabType>("outbox");
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   
-  const { recordings, isLoading, getRecordingsByDate, deleteRecording } = useOutboxContext();
-  const { isPlaying, playRecording, pauseRecording, stopAllRecordings, currentTime } = useOutboxPlayer(recordings);
-  
-  // Use the audio actions hook
-  const {
-    selectedItemId,
-    handleToggleSelection,
-    handleShare,
-    handleSend,
-    handleDelete,
-    clearSelection,
-  } = useAudioActions(recordings, deleteRecording, stopAllRecordings);
+  const { recordings, getRecordingsByDate, deleteRecording } = useOutboxContext();
+  const { 
+    currentAudioId, 
+    isPlaying, 
+    currentTime,
+    stopAudio 
+  } = useAudioContext();
 
   const tabs: { key: TabType; label: string }[] = [
     { key: "pending", label: "Pending" },
@@ -78,7 +72,7 @@ const DocumentsScreen = () => {
             duration: AudioService.formatDuration(recording.duration),
             uri: recording.uri,
             waveformData: recording.waveformData?.map(data => data.amplitude),
-            isPlaying: isPlaying(recording.id),
+            isPlaying: currentAudioId === recording.id && isPlaying,
           });
         });
       });
@@ -90,24 +84,42 @@ const DocumentsScreen = () => {
     return [];
   };
 
-  const handlePlayPause = async (itemId: string) => {
-    const recording = recordings.find(r => r.id === itemId);
+  const handleExpand = (id: string) => {
+    setExpandedCardId(expandedCardId === id ? null : id);
+  };
+
+  const handleToggleSelection = (id: string) => {
+    setSelectedItemId(prev => prev === id ? null : id);
+  };
+
+  const clearSelection = () => {
+    setSelectedItemId(null);
+  };
+
+  const handleShare = (id: string) => {
+    const recording = recordings.find(r => r.id === id);
     if (recording) {
-      try {
-        if (isPlaying(itemId)) {
-          await pauseRecording(itemId);
-        } else {
-          await stopAllRecordings(); // Stop any other playing recordings
-          await playRecording(itemId);
-        }
-      } catch (error) {
-        console.error('Error handling play/pause:', error);
-      }
+      console.log('Sharing recording:', id);
+      // TODO: Implement share functionality
     }
   };
 
-  const handleExpand = (id: string) => {
-    setExpandedCardId(expandedCardId === id ? null : id);
+  const handleSend = (id: string) => {
+    const recording = recordings.find(r => r.id === id);
+    if (recording) {
+      console.log('Sending recording:', id);
+      // TODO: Implement send functionality
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    const recording = recordings.find(r => r.id === id);
+    if (recording) {
+      console.log('Deleting recording:', id);
+      // TODO: Implement delete functionality with confirmation
+      deleteRecording(id);
+      setSelectedItemId(null);
+    }
   };
 
   // Get current data based on active tab
@@ -137,12 +149,11 @@ const DocumentsScreen = () => {
         duration={item.duration}
         uri={item.uri}
         expanded={expandedCardId === item.id}
-        isPlaying={isPlaying(item.id)}
+        isPlaying={item.isPlaying || false}
         isSelected={selectedItemId === item.id}
         waveformData={item.waveformData}
-        currentTime={currentTime}
+        currentTime={currentAudioId === item.id ? currentTime : 0}
         onExpand={() => handleExpand(item.id)}
-        onPlayPause={() => handlePlayPause(item.id)}
         onToggleSelection={() => handleToggleSelection(item.id)}
         showActions={activeTab === "outbox"}
         onShare={() => handleShare(item.id)}
@@ -179,7 +190,7 @@ const DocumentsScreen = () => {
                 setActiveTab(tab.key);
                 setExpandedCardId(null);
                 clearSelection(); // Reset selection when changing tabs
-                stopAllRecordings(); // Stop all recordings when changing tabs
+                stopAudio(); // Stop all recordings when changing tabs
               }}
               style={{
                 paddingVertical: 10,
@@ -201,36 +212,16 @@ const DocumentsScreen = () => {
             </TouchableOpacity>
           ))}
         </View>
-
-        {/* Search Icon */}
-        <TouchableOpacity style={{ marginLeft: 16 }}>
-          <Feather name="search" size={24} color="#6B7280" />
-        </TouchableOpacity>
       </View>
 
       {/* Content */}
-      <View style={{ flex: 1 }}>
-        {/* List */}
-        {isLoading ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Text style={{ fontSize: 16, color: '#666' }}>Loading recordings...</Text>
-          </View>
-        ) : getCurrentData().length === 0 ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Text style={{ fontSize: 16, color: '#666', textAlign: 'center' }}>
-              {activeTab === 'outbox' ? 'No recordings in outbox.\nStart recording to see your files here.' : 'No recordings found.'}
-            </Text>
-          </View>
-        ) : (
-          <FlatList
-            data={getCurrentData()}
-            renderItem={renderItem}
-            keyExtractor={(item) => item.id.toString()}
-            contentContainerStyle={{ paddingBottom: 100 }}
-            showsVerticalScrollIndicator={false}
-          />
-        )}
-      </View>
+      <FlatList
+        data={getCurrentData()}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 20 }}
+      />
     </SafeAreaView>
   );
 };

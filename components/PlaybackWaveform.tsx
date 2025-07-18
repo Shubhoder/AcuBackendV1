@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useCallback, memo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import {
   Waveform,
@@ -15,7 +15,7 @@ interface PlaybackWaveformProps {
   onPanStateChange?: (isMoving: boolean) => void;
 }
 
-export const PlaybackWaveform: React.FC<PlaybackWaveformProps> = ({
+export const PlaybackWaveform: React.FC<PlaybackWaveformProps> = memo(({
   audioPath,
   isPlaying,
   currentTime,
@@ -25,62 +25,88 @@ export const PlaybackWaveform: React.FC<PlaybackWaveformProps> = ({
   onPanStateChange,
 }) => {
   const waveformRef = useRef<IWaveformRef>(null);
+  const isSeekingRef = useRef(false);
+  const lastSeekTimeRef = useRef(0);
+  const lastCurrentTimeRef = useRef(0);
 
   // Control waveform player based on expo-audio state
   useEffect(() => {
-    if (waveformRef.current) {
-      if (isPlaying) {
-        console.log('▶️ Starting waveform player');
-        waveformRef.current.startPlayer();
-      } else {
-        console.log('⏸️ Pausing waveform player');
-        waveformRef.current.pausePlayer();
+    if (waveformRef.current && !isSeekingRef.current) {
+      try {
+        if (isPlaying) {
+          console.log('▶️ Starting waveform player');
+          waveformRef.current.startPlayer();
+        } else {
+          console.log('⏸️ Pausing waveform player');
+          waveformRef.current.pausePlayer();
+        }
+      } catch (error) {
+        console.error('❌ Error controlling waveform player:', error);
       }
     }
   }, [isPlaying]);
 
-  // Sync waveform position when seeking
+  // Sync waveform position when seeking (but avoid during user interaction)
   useEffect(() => {
-    if (waveformRef.current && duration > 0) {
-      const progress = currentTime / duration;
-      console.log('📊 Expo Audio Progress - Current:', currentTime.toFixed(2), 'Duration:', duration.toFixed(2), 'Progress:', progress.toFixed(3));
+    if (waveformRef.current && duration > 0 && !isSeekingRef.current) {
+      const timeDiff = Math.abs(currentTime - lastCurrentTimeRef.current);
       
-      // Note: seekTo is not available in the current waveform library version
-      // The waveform will sync automatically through the player state
+      // Only update if there's a significant time difference to avoid jitter
+      if (timeDiff > 0.1) {
+        console.log('📊 Syncing waveform - Current:', currentTime.toFixed(2), 'Duration:', duration.toFixed(2));
+        lastCurrentTimeRef.current = currentTime;
+        lastSeekTimeRef.current = currentTime;
+      }
     }
   }, [currentTime, duration]);
 
   // Handle waveform seek events (when user drags on waveform)
-  const handlePlayerStateChange = (playerState: any) => {
+  const handlePlayerStateChange = useCallback((playerState: any) => {
     console.log('🎵 Waveform Player State Change:', playerState);
     
     // Handle seek events from waveform
     if (playerState.currentTime !== undefined && onSeek) {
-      console.log('⏰ Waveform seeking to time:', playerState.currentTime);
-      onSeek(playerState.currentTime);
+      const seekTime = playerState.currentTime;
+      console.log('⏰ Waveform seeking to time:', seekTime.toFixed(2));
+      
+      // Set seeking flag to prevent conflicts
+      isSeekingRef.current = true;
+      lastSeekTimeRef.current = seekTime;
+      lastCurrentTimeRef.current = seekTime;
+      
+      // Call the seek callback
+      onSeek(seekTime);
+      
+      // Reset seeking flag after a short delay
+      setTimeout(() => {
+        isSeekingRef.current = false;
+      }, 200);
     }
+    
     if (onPlayerStateChange) {
       onPlayerStateChange(playerState);
     }
-  };
+  }, [onSeek, onPlayerStateChange]);
 
   // Handle pan state changes
-  const handlePanStateChange = (isMoving: boolean) => {
+  const handlePanStateChange = useCallback((isMoving: boolean) => {
     console.log('👆 Pan State Change - Is Moving:', isMoving);
+    isSeekingRef.current = isMoving;
+    
     if (onPanStateChange) {
       onPanStateChange(isMoving);
     }
-  };
+  }, [onPanStateChange]);
 
   // Handle waveform load state
-  const handleWaveformLoadState = (isLoading: boolean) => {
+  const handleWaveformLoadState = useCallback((isLoading: boolean) => {
     console.log('📈 Waveform Load State:', isLoading ? 'Loading...' : 'Loaded');
-  };
+  }, []);
 
   // Handle errors
-  const handleError = (error: any) => {
-    console.log('❌ Waveform Error:', error);
-  };
+  const handleError = useCallback((error: any) => {
+    console.error('❌ Waveform Error:', error);
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -88,8 +114,9 @@ export const PlaybackWaveform: React.FC<PlaybackWaveformProps> = ({
         mode="static"
         ref={waveformRef}
         path={audioPath}
-        candleSpace={2}
+        candleSpace={7}
         candleWidth={4}
+        candleHeightScale={18}
         scrubColor="#00AEEF"
         waveColor="#545454"
         onPlayerStateChange={handlePlayerStateChange}
@@ -99,13 +126,15 @@ export const PlaybackWaveform: React.FC<PlaybackWaveformProps> = ({
       />
     </View>
   );
-};
+});
+
+PlaybackWaveform.displayName = 'PlaybackWaveform';
 
 const styles = StyleSheet.create({
   container: {
     width: '100%',
     height: 100,
-    paddingHorizontal: 20,
+    paddingHorizontal: 1,
     paddingVertical: 16,
   },
 }); 

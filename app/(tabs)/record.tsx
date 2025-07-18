@@ -8,7 +8,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Dimensions,
   ScrollView,
 } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -17,7 +16,7 @@ import { AudioPlayer, AudioRecorder } from '../../components';
 import { PhotoUploadModal } from '../../components/PhotoUploadModal';
 import { PatientAddModal } from '../../components/PatientAddModal';
 import { useOutboxContext } from '../../contexts/OutboxContext';
-import { useAudioContext } from '../../contexts/AudioContext';
+import { useWaveformContext } from '../../contexts/WaveformContext';
 import { AudioService, WaveformData, AudioSegment } from '../../services/audioService';
 import { AudioWaveformService } from '../../services/audioWaveformService';
 
@@ -51,8 +50,8 @@ export default function RecordScreen() {
   // Outbox context
   const { addRecording } = useOutboxContext();
   
-  // Audio context for waveform data
-  const { setResumeMode, clearWaveformData } = useAudioContext();
+  // Waveform context for waveform data
+  const { setResumeMode, clearWaveformData } = useWaveformContext();
 
   // --- Load and persist recording counter ---
   useEffect(() => {
@@ -384,10 +383,10 @@ export default function RecordScreen() {
               <Ionicons name="checkmark-circle" size={20} color="#00AEEF" />
               <Text style={styles.featureText}>Patient assignment</Text>
             </View>
-            <View style={styles.featureItem}>
+            {/* <View style={styles.featureItem}>
               <Ionicons name="checkmark-circle" size={20} color="#00AEEF" />
               <Text style={styles.featureText}>Edit & append functionality</Text>
-            </View>
+            </View> */}
           </View>
         </View>
       </View>
