@@ -48,7 +48,7 @@ export default function RecordScreen() {
   const [segmentIndex, setSegmentIndex] = useState(0);
   
   // Outbox context
-  const { addRecording } = useOutboxContext();
+  const { addRecording, deleteRecording } = useOutboxContext();
   
   // Waveform context for waveform data
   const { setResumeMode, clearWaveformData } = useWaveformContext();
@@ -118,9 +118,6 @@ export default function RecordScreen() {
     const previousTotal = recordedSegments.reduce((sum, segment) => sum + segment.duration, 0);
     setCurrentSegmentDuration(duration - previousTotal);
   }, [recordedSegments]);
-
-
-
 
   const handleRecordingComplete = async (uri: string) => {
     try {
@@ -260,6 +257,99 @@ export default function RecordScreen() {
     await incrementRecordingCounter();
     
     console.log('Started new recording session');
+  };
+
+  // --- Discard Recording Handler ---
+  const handleDiscardRecording = async () => {
+    Alert.alert(
+      'Discard Recording',
+      'Are you sure you want to discard this recording? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Discard',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              console.log('Discarding current recording...');
+              
+              // Find the recording in outbox to delete it
+              const now = new Date();
+              const dateRecorded = now.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              });
+              const timeRecorded = now.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: true 
+              });
+              
+              // Find the recording by matching title and time
+              const recordings = await AsyncStorage.getItem('recordings');
+              if (recordings) {
+                const parsedRecordings = JSON.parse(recordings);
+                const recordingToDelete = parsedRecordings.find((r: any) => 
+                  r.title === `Dict #${recordingCounter}` && 
+                  r.dateRecorded === dateRecorded &&
+                  r.timeRecorded === timeRecorded
+                );
+                
+                if (recordingToDelete) {
+                  await deleteRecording(recordingToDelete.id);
+                  console.log('Deleted recording from outbox:', recordingToDelete.id);
+                }
+              }
+              
+              // Clean up temporary files for current session if exists
+              if (currentSessionId) {
+                try {
+                  await AudioService.cleanupTempFiles(currentSessionId);
+                  console.log('Cleaned up temp files for session:', currentSessionId);
+                } catch (error) {
+                  console.error('Error cleaning up temp files:', error);
+                }
+              }
+              
+              // Clean up recorded URI file if it exists
+              if (recordedUri) {
+                try {
+                  const { deleteAsync } = await import('expo-file-system');
+                  await deleteAsync(recordedUri);
+                  console.log('Deleted recorded URI file:', recordedUri);
+                } catch (error) {
+                  console.error('Error deleting recorded URI file:', error);
+                }
+              }
+              
+              // Reset all state and start new recording
+              setRecordedUri(null);
+              setRecordedSegments([]);
+              setIsAppending(false);
+              setTotalRecordingDuration(0);
+              setCurrentSegmentDuration(0);
+              setWaveformData([]);
+              setAppMode('initial');
+              setPatientName(null);
+              setCurrentSessionId(null);
+              setSegmentIndex(0);
+              clearWaveformData(); // Clear waveform data
+              await incrementRecordingCounter();
+              
+              console.log('Recording discarded and new session started');
+              
+            } catch (error) {
+              console.error('Error discarding recording:', error);
+              Alert.alert('Error', 'Failed to discard recording. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   // --- Patient Modal Handlers ---
@@ -456,7 +546,10 @@ export default function RecordScreen() {
           
           <View style={styles.actionsCard}>
             <View style={styles.actionRow}>
-              <TouchableOpacity style={styles.actionButton}>
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={handleDiscardRecording}
+              >
                 <View style={styles.actionIconContainer}>
                   <Ionicons name="trash-outline" size={24} color="#FF6B6B" />
                 </View>
