@@ -1,5 +1,6 @@
 import { useAuthContext } from '@/contexts/AuthContext';
 import React, { useState } from 'react';
+import { router } from 'expo-router';
 import {
   SafeAreaView,
   ScrollView,
@@ -7,39 +8,34 @@ import {
   Text,
   View,
 } from 'react-native';
-import { RecentItem, RecordingCard, StatsCard } from '../../components/home';
+import { RecordingCard, StatsCard } from '../../components/home';
+import { AudioCard } from '../../components/audio';
 import { StatusBar } from '../../components/ui';
 import { Colors, Spacing, Typography } from '../../constants';
-
-interface RecentRecord {
-  id: string;
-  patientName: string;
-  date: string;
-  time: string;
-  duration: string;
-  isPlaying: boolean;
-}
+import { useOutboxContext } from '../../contexts/OutboxContext';
+import { useAudioContext } from '../../contexts/AudioContext';
+import { AudioService } from '../../services/audioService';
 
 export default function HomeScreen() {
   const { user } = useAuthContext();
-  const [recentRecords, setRecentRecords] = useState<RecentRecord[]>([
-    {
-      id: '1',
-      patientName: 'Patient Name',
-      date: '28 May 2024',
-      time: '04:22pm',
-      duration: '00:30:40',
-      isPlaying: false,
-    },
-    {
-      id: '2',
-      patientName: 'Patient Name',
-      date: '28 May 2024',
-      time: '04:22pm',
-      duration: '00:30:40',
-      isPlaying: false,
-    },
-  ]);
+  const { recordings, deleteRecording } = useOutboxContext();
+  const { 
+    currentAudioId, 
+    isPlaying, 
+    currentTime 
+  } = useAudioContext();
+  
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+
+  // Get the 10 most recent recordings
+  const recentRecordings = recordings
+    .sort((a, b) => {
+      // Sort by date and time (most recent first)
+      const dateA = new Date(`${a.dateRecorded} ${a.timeRecorded}`);
+      const dateB = new Date(`${b.dateRecorded} ${b.timeRecorded}`);
+      return dateB.getTime() - dateA.getTime();
+    })
+    .slice(0, 10); // Limit to 10 most recent
 
   const handleStatsPress = (type: 'pending' | 'sent') => {
     // Handle stats navigation or action
@@ -53,14 +49,33 @@ export default function HomeScreen() {
     console.log('Record button pressed - recording flow initiated');
   };
 
-  const handleTogglePlay = (id: string) => {
-    setRecentRecords(prev =>
-      prev.map(record =>
-        record.id === id
-          ? { ...record, isPlaying: !record.isPlaying }
-          : { ...record, isPlaying: false }
-      )
-    );
+  const handleExpand = (id: string) => {
+    setExpandedCardId(expandedCardId === id ? null : id);
+  };
+
+  const handleShare = (id: string) => {
+    const recording = recordings.find(r => r.id === id);
+    if (recording) {
+      console.log('Sharing recording:', id);
+      // TODO: Implement share functionality
+    }
+  };
+
+  const handleSend = (id: string) => {
+    const recording = recordings.find(r => r.id === id);
+    if (recording) {
+      console.log('Sending recording:', id);
+      // TODO: Implement send functionality
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    const recording = recordings.find(r => r.id === id);
+    if (recording) {
+      console.log('Deleting recording:', id);
+      // TODO: Implement delete functionality with confirmation
+      deleteRecording(id);
+    }
   };
 
   return (
@@ -88,21 +103,37 @@ export default function HomeScreen() {
         </View>
         
 
-        <RecordingCard onPress={handleRecordPress} />
+        <RecordingCard onPress={() => router.push('/record')} />
 
         <View style={styles.recentsSection}>
           <Text style={styles.recentsTitle}>Recents</Text>
-          {recentRecords.map(record => (
-            <RecentItem
-              key={record.id}
-              patientName={record.patientName}
-              date={record.date}
-              time={record.time}
-              duration={record.duration}
-              isPlaying={record.isPlaying}
-              onTogglePlay={() => handleTogglePlay(record.id)}
-            />
-          ))}
+          {recentRecordings.length > 0 ? (
+            recentRecordings.map(record => (
+              <AudioCard
+                key={record.id}
+                id={record.id}
+                title={record.title || record.filename}
+                sender="Dr. Rajeev" // Default sender
+                date={`${record.dateRecorded} | ${record.timeRecorded}`}
+                duration={AudioService.formatDuration(record.duration)}
+                uri={record.uri}
+                expanded={expandedCardId === record.id}
+                isPlaying={currentAudioId === record.id && isPlaying}
+                waveformData={record.waveformData?.map(data => data.amplitude)}
+                currentTime={currentAudioId === record.id ? currentTime : 0}
+                onExpand={() => handleExpand(record.id)}
+                showActions={true}
+                onShare={() => handleShare(record.id)}
+                onSend={() => handleSend(record.id)}
+                onDelete={() => handleDelete(record.id)}
+              />
+            ))
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>No recent recordings</Text>
+              <Text style={styles.emptyStateSubtext}>Start recording to see your recent audio files here</Text>
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -150,5 +181,20 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.semiBold,
     color: Colors.text.secondary,
     marginBottom: Spacing.lg,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: Spacing.xl,
+  },
+  emptyStateText: {
+    fontSize: Typography.sizes.lg,
+    fontWeight: Typography.weights.semiBold,
+    color: Colors.text.secondary,
+    marginBottom: Spacing.sm,
+  },
+  emptyStateSubtext: {
+    fontSize: Typography.sizes.sm,
+    color: Colors.text.secondary,
+    textAlign: 'center',
   },
 });

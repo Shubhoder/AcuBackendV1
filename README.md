@@ -35,6 +35,26 @@ npm run reset-project
 
 This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
 
+## Features
+
+### Automatic Recording Interruption Handling
+
+The app now includes intelligent interruption handling for audio recording:
+
+- **Background/Foreground Transitions**: When the app goes to background (e.g., switching to another app), recording automatically pauses. When you return to the app, recording resumes automatically.
+
+- **Call Interruptions**: When a call comes in while recording, the app automatically pauses recording. When the call ends, recording resumes automatically - just like app switching!
+
+- **Audio Session Monitoring**: The app continuously monitors the audio session state to detect any interruptions (calls, notifications, other apps using audio) and handles them seamlessly.
+
+- **Visual Feedback**: Users see clear notifications when recording is paused due to interruptions and when it resumes.
+
+- **Manual Resume**: Users can manually resume recording using the resume button if needed.
+
+- **Status Indicators**: The recording status text shows the current state and reason for any pause.
+
+This ensures that users never lose their recordings due to unexpected interruptions and provides a seamless recording experience that works exactly like app switching for both background transitions and call interruptions.
+
 ## Learn more
 
 To learn more about developing your project with Expo, look at the following resources:
