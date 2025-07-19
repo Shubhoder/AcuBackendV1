@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  
   FlatList,
   SafeAreaView,
   Text,
@@ -9,6 +10,7 @@ import {
 import { useOutboxContext } from "../../contexts/OutboxContext";
 import { AudioCard } from "../../components/audio";
 import { AudioService } from "../../services/audioService";
+
 
 interface DocumentItem {
   id: string;
@@ -65,7 +67,6 @@ const DocumentsScreen = () => {
             duration: AudioService.formatDuration(recording.duration),
             uri: recording.uri,
             waveformData: recording.waveformData?.map(data => data.amplitude),
-            isPlaying: false, // Each card manages its own playing state
           });
         });
       });
@@ -115,6 +116,8 @@ const DocumentsScreen = () => {
     }
   };
 
+  
+
   // Get current data based on active tab
   const getCurrentData = () => {
     return getDynamicData();
@@ -142,10 +145,8 @@ const DocumentsScreen = () => {
         duration={item.duration}
         uri={item.uri}
         expanded={expandedCardId === item.id}
-        isPlaying={item.isPlaying || false}
         isSelected={selectedItemId === item.id}
         waveformData={item.waveformData}
-        currentTime={0} // Each card manages its own time
         onExpand={() => handleExpand(item.id)}
         onToggleSelection={() => handleToggleSelection(item.id)}
         showActions={activeTab === "outbox"}
@@ -204,6 +205,10 @@ const DocumentsScreen = () => {
             </TouchableOpacity>
           ))}
         </View>
+
+        
+        
+        
       </View>
 
       {/* Content */}

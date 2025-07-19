@@ -5,8 +5,11 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Alert,
 } from "react-native";
 import { PlaybackWaveform, PlaybackWaveformRef } from "./PlaybackWaveform";
+import { useAudioContext } from "../contexts/AudioContext";
+import * as FileSystem from 'expo-file-system';
 
 export interface AudioCardProps {
   id: number | string;
@@ -16,10 +19,8 @@ export interface AudioCardProps {
   duration: string;
   uri?: string;
   expanded?: boolean;
-  isPlaying?: boolean;
   isSelected?: boolean;
   waveformData?: number[];
-  currentTime?: number;
   onExpand?: () => void;
   onToggleSelection?: () => void;
   showActions?: boolean;
@@ -30,73 +31,34 @@ export interface AudioCardProps {
 
 export const AudioCard: React.FC<AudioCardProps> = memo(({
   id, title, sender, date, duration, uri,
-  expanded = false, isPlaying = false, isSelected = false,
-  waveformData, currentTime = 0,
+  expanded = false, isSelected = false,
+  waveformData,
   onExpand, onToggleSelection,
   showActions = false, onDelete, onSend, onShare
 }) => {
+  // Use global audio context for state management
+  const { 
+    currentAudioId, 
+    isPlaying: globalIsPlaying, 
+    currentTime: globalCurrentTime, 
+    duration: globalDuration,
+    playAudio, 
+    pauseAudio, 
+    seekTo 
+  } = useAudioContext();
+  
   // Local state for immediate button feedback
   const [isButtonPressed, setIsButtonPressed] = useState(false);
-  const [localIsPlaying, setLocalIsPlaying] = useState(false);
-  const [localCurrentTime, setLocalCurrentTime] = useState(0);
-  const [localDuration, setLocalDuration] = useState(0);
+  const [isAudioFileValid, setIsAudioFileValid] = useState(true);
+  const [isCheckingFile, setIsCheckingFile] = useState(false);
   
   // Waveform ref to control playback
   const waveformRef = React.useRef<PlaybackWaveformRef>(null);
   
-  // Update local state when props change (only if different to avoid unnecessary updates)
-  useEffect(() => {
-    if (isPlaying !== localIsPlaying) {
-      setLocalIsPlaying(isPlaying);
-    }
-    if (Math.abs(currentTime - localCurrentTime) > 0.1) {
-      setLocalCurrentTime(currentTime);
-    }
-  }, [isPlaying, currentTime, localIsPlaying, localCurrentTime]);
-
-  // Handle play/pause button press with immediate feedback
-  const handlePlayPause = useCallback(async () => {
-    if (!uri) {
-      console.error('❌ No URI available for audio playback');
-      return;
-    }
-    
-    console.log(`🎵 Play/Pause clicked - Card: ${id}, Expanded: ${expanded}, Current State: ${localIsPlaying ? 'Playing' : 'Paused'}`);
-    
-    // Immediate visual feedback
-    setIsButtonPressed(true);
-    
-    try {
-      if (waveformRef.current) {
-        if (localIsPlaying) {
-          // Pause current audio
-          console.log('⏸️ Pausing audio from card:', id);
-          waveformRef.current.pausePlayer();
-          setLocalIsPlaying(false);
-        } else {
-          // Play this audio
-          console.log('▶️ Playing audio from card:', id, 'URI:', uri);
-          waveformRef.current.startPlayer();
-          setLocalIsPlaying(true);
-        }
-      } else {
-        console.log('⚠️ Waveform ref not available yet, setting local state');
-        // If waveform isn't ready yet, just update local state
-        // The waveform will sync when it becomes available
-        setLocalIsPlaying(!localIsPlaying);
-      }
-    } catch (error) {
-      console.error('❌ Error in handlePlayPause:', error);
-      // Reset state on error
-      setLocalIsPlaying(false);
-    } finally {
-      // Reset button state after a short delay
-      setTimeout(() => {
-        setIsButtonPressed(false);
-      }, 150);
-    }
-  }, [uri, localIsPlaying, id, expanded]);
-
+  // Determine if this card is the currently playing audio
+  const isCurrentAudio = currentAudioId === id.toString();
+  const isActuallyPlaying = isCurrentAudio && globalIsPlaying;
+  
   // Helper function to parse duration string to seconds
   const parseDurationToSeconds = useCallback((durationStr: string): number => {
     try {
@@ -113,41 +75,107 @@ export const AudioCard: React.FC<AudioCardProps> = memo(({
     }
   }, []);
 
-  // Progress calculation - use local duration if available, otherwise parse from string
+  // Use global duration if available, otherwise parse from string
   const total = useMemo(() => {
-    return localDuration > 0 
-      ? localDuration 
+    return globalDuration > 0 
+      ? globalDuration 
       : parseDurationToSeconds(duration);
-  }, [localDuration, parseDurationToSeconds, duration]);
+  }, [globalDuration, parseDurationToSeconds, duration]);
+
+  // Validate audio file exists and is accessible
+  const validateAudioFile = useCallback(async (fileUri: string) => {
+    if (!fileUri) return false;
+    
+    try {
+      setIsCheckingFile(true);
+      const fileInfo = await FileSystem.getInfoAsync(fileUri);
+      const isValid = fileInfo.exists && fileInfo.size > 0;
+      setIsAudioFileValid(isValid);
+      
+      if (!isValid) {
+        console.error('❌ Audio file validation failed:', fileUri);
+        console.error('📁 File info:', fileInfo);
+      }
+      
+      return isValid;
+    } catch (error) {
+      console.error('❌ Error validating audio file:', error);
+      setIsAudioFileValid(false);
+      return false;
+    } finally {
+      setIsCheckingFile(false);
+    }
+  }, []);
+
+  // Validate audio file when URI changes
+  useEffect(() => {
+    if (uri) {
+      validateAudioFile(uri);
+    }
+  }, [uri, validateAudioFile]);
+
+  // Handle play/pause button press with immediate feedback
+  const handlePlayPause = useCallback(async () => {
+    if (!uri) {
+      console.error('❌ No URI available for audio playback');
+      Alert.alert('Error', 'No audio file available for playback.');
+      return;
+    }
+
+    if (!isAudioFileValid) {
+      console.error('❌ Audio file is not valid');
+      Alert.alert('Error', 'Audio file is corrupted or not accessible. Please try recording again.');
+      return;
+    }
+    
+    console.log(`🎵 Play/Pause clicked - Card: ${id}, Current Audio: ${currentAudioId}, Playing: ${globalIsPlaying}`);
+    
+    // Immediate visual feedback
+    setIsButtonPressed(true);
+    
+    try {
+      if (isCurrentAudio && globalIsPlaying) {
+        // Pause current audio
+        console.log('⏸️ Pausing audio from card:', id);
+        await pauseAudio();
+      } else {
+        // Play this audio (will stop any other audio automatically)
+        console.log('▶️ Playing audio from card:', id, 'URI:', uri);
+        await playAudio(id.toString(), uri);
+      }
+    } catch (error) {
+      console.error('❌ Error in handlePlayPause:', error);
+      // Show user-friendly error message
+      Alert.alert('Playback Error', 'Unable to play audio file. The file may be corrupted or in an unsupported format.');
+    } finally {
+      // Reset button state after a short delay
+      setTimeout(() => {
+        setIsButtonPressed(false);
+      }, 150);
+    }
+  }, [uri, id, currentAudioId, globalIsPlaying, isCurrentAudio, isAudioFileValid, playAudio, pauseAudio]);
 
   const handleSeek = useCallback(async (time: number) => {
-    if (waveformRef.current && uri) {
+    if (isCurrentAudio && uri && isAudioFileValid) {
       try {
         console.log('🎯 AudioCard seeking to:', time.toFixed(2));
-        setLocalCurrentTime(time);
+        await seekTo(time);
       } catch (error) {
         console.error('❌ Error seeking in AudioCard:', error);
       }
     }
-  }, [uri]);
+  }, [isCurrentAudio, uri, isAudioFileValid, seekTo]);
 
   // Handle waveform player state changes
   const handlePlayerStateChange = useCallback((playerState: any) => {
     console.log('🎵 AudioCard Player State:', playerState);
     
-    if (playerState.currentTime !== undefined) {
-      setLocalCurrentTime(playerState.currentTime);
+    // Only handle state changes if this is the current audio
+    if (isCurrentAudio) {
+      // The global context will handle the actual state updates
+      // This is mainly for logging and debugging
     }
-    
-    if (playerState.duration !== undefined) {
-      setLocalDuration(playerState.duration);
-    }
-    
-    // Update playing state based on waveform player
-    if (playerState.isPlaying !== undefined) {
-      setLocalIsPlaying(playerState.isPlaying);
-    }
-  }, []);
+  }, [isCurrentAudio]);
 
   // Compact waveform display for collapsed state
   const renderCompactWaveform = useCallback(() => {
@@ -167,7 +195,7 @@ export const AudioCard: React.FC<AudioCardProps> = memo(({
                 styles.compactBar,
                 {
                   height: Math.max(4, (amplitude || 0) * 20),
-                  backgroundColor: localIsPlaying ? '#00AEEF' : '#E5E7EB',
+                  backgroundColor: isActuallyPlaying ? '#00AEEF' : '#E5E7EB',
                 }
               ]}
             />
@@ -178,16 +206,24 @@ export const AudioCard: React.FC<AudioCardProps> = memo(({
       console.error('❌ Error rendering compact waveform:', error);
       return null;
     }
-  }, [waveformData, localIsPlaying]);
+  }, [waveformData, isActuallyPlaying]);
 
   // Determine button state and appearance
-  const buttonIsPlaying = localIsPlaying || isButtonPressed;
+  const buttonIsPlaying = isActuallyPlaying || isButtonPressed;
   const buttonBackgroundColor = buttonIsPlaying ? "#00AEEF" : "#E5E7EB";
 
   // Memoize the pan state change handler to prevent unnecessary re-renders
   const handlePanStateChange = useCallback((isMoving: boolean) => {
     console.log('👆 AudioCard Pan State:', isMoving);
   }, []);
+
+  // Render error state for invalid audio files
+  const renderErrorState = () => (
+    <View style={styles.errorContainer}>
+      <Feather name="alert-triangle" size={16} color="#EF4444" />
+      <Text style={styles.errorText}>Audio file unavailable</Text>
+    </View>
+  );
 
   return (
     <TouchableOpacity 
@@ -221,11 +257,17 @@ export const AudioCard: React.FC<AudioCardProps> = memo(({
           style={[
             styles.playButton,
             { backgroundColor: buttonBackgroundColor },
-            isButtonPressed && styles.playButtonPressed
+            isButtonPressed && styles.playButtonPressed,
+            !isAudioFileValid && styles.disabledButton
           ]}
           activeOpacity={0.7}
+          disabled={!isAudioFileValid || isCheckingFile}
         >
-          {buttonIsPlaying ? (
+          {isCheckingFile ? (
+            <View style={styles.loadingIndicator}>
+              <Text style={styles.loadingText}>...</Text>
+            </View>
+          ) : buttonIsPlaying ? (
             <View style={styles.pauseIcon}>
               <View style={styles.pauseBar} />
               <View style={styles.pauseBar} />
@@ -242,12 +284,15 @@ export const AudioCard: React.FC<AudioCardProps> = memo(({
           
           {/* Compact waveform in collapsed state */}
           {!expanded && renderCompactWaveform()}
+          
+          {/* Show error state if audio file is invalid */}
+          {!expanded && !isAudioFileValid && !isCheckingFile && renderErrorState()}
         </View>
         <Text style={styles.duration}>{duration}</Text>
       </View>
 
       {/* Always render waveform player for consistent control, but hide in collapsed state */}
-      {uri && (
+      {uri && isAudioFileValid && !isCheckingFile && (
         <View style={[
           styles.waveformContainer,
           !expanded && styles.hiddenWaveform
@@ -255,13 +300,22 @@ export const AudioCard: React.FC<AudioCardProps> = memo(({
           <PlaybackWaveform
             ref={waveformRef}
             audioPath={uri}
-            isPlaying={localIsPlaying}
-            currentTime={localCurrentTime}
+            isPlaying={isActuallyPlaying}
+            currentTime={isCurrentAudio ? globalCurrentTime : 0}
             duration={total}
             onSeek={handleSeek}
             onPlayerStateChange={handlePlayerStateChange}
             onPanStateChange={handlePanStateChange}
           />
+        </View>
+      )}
+
+      {/* Show error message in expanded view if audio file is invalid */}
+      {expanded && !isAudioFileValid && !isCheckingFile && (
+        <View style={styles.expandedErrorContainer}>
+          <Feather name="alert-triangle" size={24} color="#EF4444" />
+          <Text style={styles.expandedErrorText}>Audio file is corrupted or not accessible</Text>
+          <Text style={styles.expandedErrorSubtext}>Please try recording again or contact support</Text>
         </View>
       )}
 
@@ -342,6 +396,18 @@ const styles = StyleSheet.create({
   },
   playButtonPressed: {
     transform: [{ scale: 0.95 }],
+  },
+  disabledButton: {
+    backgroundColor: "#F3F4F6",
+    opacity: 0.6,
+  },
+  loadingIndicator: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    fontSize: 16,
+    color: "#666",
   },
   pauseIcon: {
     flexDirection: "row",
@@ -442,5 +508,35 @@ const styles = StyleSheet.create({
     width: 2,
     borderRadius: 1,
     marginHorizontal: 1,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#EF4444',
+    marginLeft: 4,
+  },
+  expandedErrorContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    marginTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  expandedErrorText: {
+    fontSize: 16,
+    color: '#EF4444',
+    fontWeight: '600',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  expandedErrorSubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 4,
+    textAlign: 'center',
   },
 });

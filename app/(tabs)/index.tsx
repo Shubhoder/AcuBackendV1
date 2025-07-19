@@ -13,17 +13,11 @@ import { AudioCard } from '../../components/audio';
 import { StatusBar } from '../../components/ui';
 import { Colors, Spacing, Typography } from '../../constants';
 import { useOutboxContext } from '../../contexts/OutboxContext';
-import { useAudioContext } from '../../contexts/AudioContext';
 import { AudioService } from '../../services/audioService';
 
 export default function HomeScreen() {
   const { user } = useAuthContext();
   const { recordings, deleteRecording } = useOutboxContext();
-  const { 
-    currentAudioId, 
-    isPlaying, 
-    currentTime 
-  } = useAudioContext();
   
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
 
@@ -118,9 +112,7 @@ export default function HomeScreen() {
                 duration={AudioService.formatDuration(record.duration)}
                 uri={record.uri}
                 expanded={expandedCardId === record.id}
-                isPlaying={currentAudioId === record.id && isPlaying}
                 waveformData={record.waveformData?.map(data => data.amplitude)}
-                currentTime={currentAudioId === record.id ? currentTime : 0}
                 onExpand={() => handleExpand(record.id)}
                 showActions={true}
                 onShare={() => handleShare(record.id)}

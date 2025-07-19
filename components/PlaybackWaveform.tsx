@@ -244,7 +244,29 @@ export const PlaybackWaveform = memo(forwardRef<PlaybackWaveformRef, PlaybackWav
   // Handle errors
   const handleError = useCallback((error: any) => {
     console.error('❌ Waveform Error:', error);
-  }, []);
+    
+    // Check if it's a decode error and provide more specific logging
+    if (error?.message?.includes('decode')) {
+      console.error('❌ Audio file decode error - this usually means the file is corrupted or in an unsupported format');
+      console.error('📁 Audio path:', audioPath);
+    }
+    
+    // Reset initialization flag on error
+    isInitializedRef.current = false;
+    
+    // Try to validate the file exists
+    const validateFile = async () => {
+      try {
+        const { getInfoAsync } = await import('expo-file-system');
+        const fileInfo = await getInfoAsync(audioPath);
+        console.error('📁 File validation result:', fileInfo);
+      } catch (validationError) {
+        console.error('❌ File validation failed:', validationError);
+      }
+    };
+    
+    validateFile();
+  }, [audioPath]);
 
   // Handle container layout
   const handleContainerLayout = useCallback((event: any) => {

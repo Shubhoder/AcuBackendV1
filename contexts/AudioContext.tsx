@@ -167,11 +167,30 @@ export const AudioProvider: React.FC<AudioProviderProps> = ({ children }) => {
       
       console.log('🎵 Audio state updated for new URI');
       
-      // The player will be recreated with the new URI and should start playing automatically
-      // We'll wait for the status to update to confirm it's playing
+      // Start playing the new audio after a short delay to allow player to initialize
+      setTimeout(async () => {
+        if (playerRef.current) {
+          try {
+            console.log('▶️ Starting playback of new audio');
+            hasEndedRef.current = false;
+            await playerRef.current.play();
+            setIsPlaying(true);
+          } catch (error) {
+            console.error('❌ Failed to start playback:', error);
+            // Reset state on error
+            setIsPlaying(false);
+            setCurrentAudioId(null);
+            setCurrentUri(null);
+          }
+        }
+      }, 100);
       
     } catch (error) {
       console.error('❌ Failed to play audio:', error);
+      // Reset state on error
+      setIsPlaying(false);
+      setCurrentAudioId(null);
+      setCurrentUri(null);
     }
   }, [currentAudioId, currentUri, isPlaying, isInitialized]);
 
