@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback, memo } from 'react';
+import React, { useRef, useEffect, useCallback, memo, forwardRef, useImperativeHandle } from 'react';
 import { View, StyleSheet } from 'react-native';
 import {
   Waveform,
@@ -15,7 +15,12 @@ interface PlaybackWaveformProps {
   onPanStateChange?: (isMoving: boolean) => void;
 }
 
-export const PlaybackWaveform: React.FC<PlaybackWaveformProps> = memo(({
+export interface PlaybackWaveformRef {
+  startPlayer: () => void;
+  pausePlayer: () => void;
+}
+
+export const PlaybackWaveform = memo(forwardRef<PlaybackWaveformRef, PlaybackWaveformProps>(({
   audioPath,
   isPlaying,
   currentTime,
@@ -23,32 +28,66 @@ export const PlaybackWaveform: React.FC<PlaybackWaveformProps> = memo(({
   onSeek,
   onPlayerStateChange,
   onPanStateChange,
-}) => {
+}, ref) => {
   const waveformRef = useRef<IWaveformRef>(null);
   const isSeekingRef = useRef(false);
   const lastSeekTimeRef = useRef(0);
   const lastCurrentTimeRef = useRef(0);
+  const isInitializedRef = useRef(false);
+  const lastIsPlayingRef = useRef(false);
 
-  // Control waveform player based on expo-audio state
-  useEffect(() => {
-    if (waveformRef.current && !isSeekingRef.current) {
-      try {
-        if (isPlaying) {
-          console.log('▶️ Starting waveform player');
+  // Expose player control methods to parent component
+  useImperativeHandle(ref, () => ({
+    startPlayer: () => {
+      if (waveformRef.current && isInitializedRef.current) {
+        console.log('▶️ Starting waveform player');
+        try {
           waveformRef.current.startPlayer();
-        } else {
-          console.log('⏸️ Pausing waveform player');
-          waveformRef.current.pausePlayer();
+        } catch (error) {
+          console.error('❌ Error starting waveform player:', error);
         }
-      } catch (error) {
-        console.error('❌ Error controlling waveform player:', error);
+      } else {
+        console.log('⚠️ Waveform player not ready yet');
+      }
+    },
+    pausePlayer: () => {
+      if (waveformRef.current && isInitializedRef.current) {
+        console.log('⏸️ Pausing waveform player');
+        try {
+          waveformRef.current.pausePlayer();
+        } catch (error) {
+          console.error('❌ Error pausing waveform player:', error);
+        }
+      } else {
+        console.log('⚠️ Waveform player not ready yet');
+      }
+    },
+  }), []);
+
+  // Control waveform player based on isPlaying prop (only when state actually changes)
+  useEffect(() => {
+    if (waveformRef.current && isInitializedRef.current && !isSeekingRef.current) {
+      // Only update if the playing state has actually changed
+      if (isPlaying !== lastIsPlayingRef.current) {
+        try {
+          if (isPlaying) {
+            console.log('▶️ Starting waveform player from prop');
+            waveformRef.current.startPlayer();
+          } else {
+            console.log('⏸️ Pausing waveform player from prop');
+            waveformRef.current.pausePlayer();
+          }
+          lastIsPlayingRef.current = isPlaying;
+        } catch (error) {
+          console.error('❌ Error controlling waveform player:', error);
+        }
       }
     }
   }, [isPlaying]);
 
   // Sync waveform position when seeking (but avoid during user interaction)
   useEffect(() => {
-    if (waveformRef.current && duration > 0 && !isSeekingRef.current) {
+    if (waveformRef.current && duration > 0 && !isSeekingRef.current && isInitializedRef.current) {
       const timeDiff = Math.abs(currentTime - lastCurrentTimeRef.current);
       
       // Only update if there's a significant time difference to avoid jitter
@@ -63,6 +102,12 @@ export const PlaybackWaveform: React.FC<PlaybackWaveformProps> = memo(({
   // Handle waveform seek events (when user drags on waveform)
   const handlePlayerStateChange = useCallback((playerState: any) => {
     console.log('🎵 Waveform Player State Change:', playerState);
+    
+    // Mark as initialized when we get the first state
+    if (!isInitializedRef.current) {
+      isInitializedRef.current = true;
+      console.log('✅ Waveform player initialized');
+    }
     
     // Handle seek events from waveform
     if (playerState.currentTime !== undefined && onSeek) {
@@ -101,6 +146,9 @@ export const PlaybackWaveform: React.FC<PlaybackWaveformProps> = memo(({
   // Handle waveform load state
   const handleWaveformLoadState = useCallback((isLoading: boolean) => {
     console.log('📈 Waveform Load State:', isLoading ? 'Loading...' : 'Loaded');
+    if (!isLoading) {
+      isInitializedRef.current = true;
+    }
   }, []);
 
   // Handle errors
@@ -126,7 +174,7 @@ export const PlaybackWaveform: React.FC<PlaybackWaveformProps> = memo(({
       />
     </View>
   );
-});
+}));
 
 PlaybackWaveform.displayName = 'PlaybackWaveform';
 

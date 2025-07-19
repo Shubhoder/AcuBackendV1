@@ -7,7 +7,6 @@ import {
   View,
 } from "react-native";
 import { useOutboxContext } from "../../contexts/OutboxContext";
-import { useAudioContext } from "../../contexts/AudioContext";
 import { AudioCard } from "../../components/audio";
 import { AudioService } from "../../services/audioService";
 
@@ -32,12 +31,6 @@ const DocumentsScreen = () => {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   
   const { recordings, getRecordingsByDate, deleteRecording } = useOutboxContext();
-  const { 
-    currentAudioId, 
-    isPlaying, 
-    currentTime,
-    stopAudio 
-  } = useAudioContext();
 
   const tabs: { key: TabType; label: string }[] = [
     { key: "pending", label: "Pending" },
@@ -72,7 +65,7 @@ const DocumentsScreen = () => {
             duration: AudioService.formatDuration(recording.duration),
             uri: recording.uri,
             waveformData: recording.waveformData?.map(data => data.amplitude),
-            isPlaying: currentAudioId === recording.id && isPlaying,
+            isPlaying: false, // Each card manages its own playing state
           });
         });
       });
@@ -152,7 +145,7 @@ const DocumentsScreen = () => {
         isPlaying={item.isPlaying || false}
         isSelected={selectedItemId === item.id}
         waveformData={item.waveformData}
-        currentTime={currentAudioId === item.id ? currentTime : 0}
+        currentTime={0} // Each card manages its own time
         onExpand={() => handleExpand(item.id)}
         onToggleSelection={() => handleToggleSelection(item.id)}
         showActions={activeTab === "outbox"}
@@ -190,7 +183,6 @@ const DocumentsScreen = () => {
                 setActiveTab(tab.key);
                 setExpandedCardId(null);
                 clearSelection(); // Reset selection when changing tabs
-                stopAudio(); // Stop all recordings when changing tabs
               }}
               style={{
                 paddingVertical: 10,
