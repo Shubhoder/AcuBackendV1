@@ -11,7 +11,9 @@ import {
   ScrollView,
 } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AudioPlayer, AudioRecorder } from '../../components';
+import { AudioRecorder } from '../../components';
+import { PlaybackWaveform } from '../../components/PlaybackWaveform';
+import { setAudioModeAsync } from 'expo-audio';
 
 import { PhotoUploadModal } from '../../components/PhotoUploadModal';
 import { PatientAddModal } from '../../components/PatientAddModal';
@@ -43,6 +45,13 @@ export default function RecordScreen() {
   const [isConcatenating, setIsConcatenating] = useState(false);
   const recordingStartTime = useRef<number>(0);
   
+  // --- Audio Player State (replicating AudioCard behavior) ---
+  const [isButtonPressed, setIsButtonPressed] = useState(false);
+  const [localIsPlaying, setLocalIsPlaying] = useState(false);
+  const [localCurrentTime, setLocalCurrentTime] = useState(0);
+  const [localDuration, setLocalDuration] = useState(0);
+  const waveformRef = useRef<any>(null);
+  
   // --- Session Management for Edit & Append ---
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [segmentIndex, setSegmentIndex] = useState(0);
@@ -59,6 +68,21 @@ export default function RecordScreen() {
       const stored = await AsyncStorage.getItem(RECORDING_COUNTER_KEY);
       if (stored && !isNaN(Number(stored))) {
         setRecordingCounter(Number(stored));
+      }
+    })();
+  }, []);
+
+  // --- Set audio mode for speaker output ---
+  useEffect(() => {
+    (async () => {
+      try {
+        await setAudioModeAsync({
+          playsInSilentMode: true,
+          allowsRecording: false,
+        });
+        console.log('✅ Audio mode set for speaker output');
+      } catch (error) {
+        console.error('❌ Error setting audio mode:', error);
       }
     })();
   }, []);
@@ -218,8 +242,93 @@ export default function RecordScreen() {
   };
 
   // --- Playback Handlers ---
+  // --- Audio Player Handlers (replicating AudioCard behavior) ---
+  const handlePlayPause = useCallback(async () => {
+    if (!recordedUri) {
+      console.error('❌ No URI available for audio playback');
+      return;
+    }
+    
+    console.log(`🎵 Play/Pause clicked - Current State: ${localIsPlaying ? 'Playing' : 'Paused'}`);
+    
+    // Immediate visual feedback
+    setIsButtonPressed(true);
+    
+    try {
+      // Ensure audio mode is set for speaker output when starting playback
+      if (!localIsPlaying) {
+        await setAudioModeAsync({
+          playsInSilentMode: true,
+          allowsRecording: false,
+        });
+        console.log('✅ Audio mode set for speaker output');
+      }
+      
+      if (waveformRef.current) {
+        if (localIsPlaying) {
+          // Pause current audio
+          console.log('⏸️ Pausing audio');
+          waveformRef.current.pausePlayer();
+          setLocalIsPlaying(false);
+        } else {
+          // Play this audio
+          console.log('▶️ Playing audio, URI:', recordedUri);
+          waveformRef.current.startPlayer();
+          setLocalIsPlaying(true);
+        }
+      } else {
+        console.log('⚠️ Waveform ref not available yet, setting local state');
+        // If waveform isn't ready yet, just update local state
+        // The waveform will sync when it becomes available
+        setLocalIsPlaying(!localIsPlaying);
+      }
+    } catch (error) {
+      console.error('❌ Error in handlePlayPause:', error);
+      // Reset state on error
+      setLocalIsPlaying(false);
+    } finally {
+      // Reset button state after a short delay
+      setTimeout(() => {
+        setIsButtonPressed(false);
+      }, 150);
+    }
+  }, [recordedUri, localIsPlaying]);
+
+  const handleSeek = useCallback(async (time: number) => {
+    if (waveformRef.current && recordedUri) {
+      try {
+        console.log('🎯 Seeking to:', time.toFixed(2));
+        setLocalCurrentTime(time);
+      } catch (error) {
+        console.error('❌ Error seeking:', error);
+      }
+    }
+  }, [recordedUri]);
+
+  const handlePlayerStateChange = useCallback((playerState: any) => {
+    console.log('🎵 Player State:', playerState);
+    
+    if (playerState.currentTime !== undefined) {
+      setLocalCurrentTime(playerState.currentTime);
+    }
+    
+    if (playerState.duration !== undefined) {
+      setLocalDuration(playerState.duration);
+    }
+    
+    // Update playing state based on waveform player
+    if (playerState.isPlaying !== undefined) {
+      setLocalIsPlaying(playerState.isPlaying);
+    }
+  }, []);
+
+  const handlePanStateChange = useCallback((isMoving: boolean) => {
+    console.log('👆 Pan State:', isMoving);
+  }, []);
+
   const handlePlaybackComplete = () => {
     console.log('Playback completed');
+    setLocalIsPlaying(false);
   };
 
   const handleEditResume = () => {
@@ -254,6 +363,13 @@ export default function RecordScreen() {
     setCurrentSessionId(null);
     setSegmentIndex(0);
     clearWaveformData(); // Clear waveform data
+    
+    // Reset audio player state
+    setLocalIsPlaying(false);
+    setLocalCurrentTime(0);
+    setLocalDuration(0);
+    setIsButtonPressed(false);
+    
     await incrementRecordingCounter();
     
     console.log('Started new recording session');
@@ -338,6 +454,13 @@ export default function RecordScreen() {
               setCurrentSessionId(null);
               setSegmentIndex(0);
               clearWaveformData(); // Clear waveform data
+              
+              // Reset audio player state
+              setLocalIsPlaying(false);
+              setLocalCurrentTime(0);
+              setLocalDuration(0);
+              setIsButtonPressed(false);
+              
               await incrementRecordingCounter();
               
               console.log('Recording discarded and new session started');
@@ -535,12 +658,51 @@ export default function RecordScreen() {
             )}
             
             {recordedUri && !isGeneratingWaveform && !isConcatenating && (
-              <AudioPlayer
-                audioUri={recordedUri}
-                onPlaybackComplete={handlePlaybackComplete}
-                onEditResume={handleEditResume}
-                audioDuration={totalRecordingDuration}
-              />
+              <View style={styles.audioPlayerContainer}>
+                <PlaybackWaveform
+                  ref={waveformRef}
+                  audioPath={recordedUri}
+                  isPlaying={localIsPlaying}
+                  currentTime={localCurrentTime}
+                  duration={totalRecordingDuration}
+                  onSeek={handleSeek}
+                  onPlayerStateChange={handlePlayerStateChange}
+                  onPanStateChange={handlePanStateChange}
+                />
+                
+                {/* Play/Pause Button - exactly like AudioCard */}
+                <TouchableOpacity
+                  onPress={handlePlayPause}
+                  style={[
+                    styles.playButton,
+                    { backgroundColor: (localIsPlaying || isButtonPressed) ? '#00AEEF' : '#E5E7EB' },
+                    isButtonPressed && styles.playButtonPressed
+                  ]}
+                  activeOpacity={0.7}
+                >
+                  {(localIsPlaying || isButtonPressed) ? (
+                    <View style={styles.pauseIcon}>
+                      <View style={styles.pauseBar} />
+                      <View style={styles.pauseBar} />
+                    </View>
+                  ) : (
+                    <Ionicons name="play" size={20} color="#666" />
+                  )}
+                </TouchableOpacity>
+                
+                {/* Edit/Resume Button */}
+                {/* <TouchableOpacity
+                  style={styles.editResumeButton}
+                  onPress={handleEditResume}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.editResumeButtonContent}>
+                    <Ionicons name="mic" size={24} color="#fff" style={{ marginRight: 8 }} />
+                    <Text style={styles.editResumeButtonText}>Edit & Append</Text>
+                  </View>
+                  <Text style={styles.editResumeButtonSubtext}>Add more audio to this recording</Text>
+                </TouchableOpacity> */}
+              </View>
             )}
           </View>
           
@@ -831,5 +993,60 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  audioPlayerContainer: {
+    flex: 1,
+    paddingVertical: 20,
+  },
+  editResumeButton: {
+    backgroundColor: '#00AEEF',
+    borderRadius: 16,
+    padding: 20,
+    marginTop: 20,
+    shadowColor: "#00AEEF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  editResumeButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  editResumeButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  editResumeButtonSubtext: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 14,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  playButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: "center",
+    alignItems: "center",
+    alignSelf: 'center',
+    marginTop: 16,
+  },
+  playButtonPressed: {
+    transform: [{ scale: 0.95 }],
+  },
+  pauseIcon: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  pauseBar: {
+    width: 3,
+    height: 16,
+    backgroundColor: "#fff",
+    marginHorizontal: 1,
   },
 });
