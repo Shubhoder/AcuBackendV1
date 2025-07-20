@@ -264,7 +264,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
       onRecordingStop();
 
       console.log('Recording stopped and URI:', uri);
-      Alert.alert('Recording Saved', `Audio saved at: ${uri}`);
+      Alert.alert('Recording Saved');
 
     } catch (err) {
       console.error('Failed to stop recording', err);
