@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AudioRecorder } from '../../components';
@@ -21,6 +22,9 @@ import { useOutboxContext } from '../../contexts/OutboxContext';
 import { useWaveformContext } from '../../contexts/WaveformContext';
 import { AudioService, WaveformData, AudioSegment } from '../../services/audioService';
 import { AudioWaveformService } from '../../services/audioWaveformService';
+import { audioRecordingService } from '../../services/audioRecordingService';
+import { useAuthContext } from '../../contexts/AuthContext';
+import { ErrorHandler } from '../../utils/errorUtils';
 
 // const { width, height } = Dimensions.get('window');
 const RECORDING_COUNTER_KEY = 'RECORDING_COUNTER_KEY';
@@ -43,6 +47,8 @@ export default function RecordScreen() {
   const [audioRecorder, setAudioRecorder] = useState<any>(null); // Used by AudioRecorder component
   const [isGeneratingWaveform, setIsGeneratingWaveform] = useState(false);
   const [isConcatenating, setIsConcatenating] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const recordingStartTime = useRef<number>(0);
   
   // --- Audio Player State (replicating AudioCard behavior) ---
@@ -57,10 +63,18 @@ export default function RecordScreen() {
   const [segmentIndex, setSegmentIndex] = useState(0);
   
   // Outbox context
-  const { addRecording, deleteRecording } = useOutboxContext();
+  const outboxContext = useOutboxContext();
+  const addRecording = outboxContext.addRecording;
+  const deleteRecording = outboxContext.deleteRecording;
   
   // Waveform context for waveform data
-  const { setResumeMode, clearWaveformData } = useWaveformContext();
+  const waveformContext = useWaveformContext();
+  const setResumeMode = waveformContext.setResumeMode;
+  const clearWaveformData = waveformContext.clearWaveformData;
+
+  // Auth context
+  const authContext = useAuthContext();
+  const user = authContext.user;
 
   // --- Load and persist recording counter ---
   useEffect(() => {
@@ -524,6 +538,75 @@ export default function RecordScreen() {
     setSelectedPhotos([]);
   };
 
+  const handleSendRecording = async () => {
+    if (!recordedUri) {
+      ErrorHandler.showErrorAlert({
+        message: 'No recording to send',
+      });
+      return;
+    }
+
+    if (!user) {
+      ErrorHandler.showErrorAlert({
+        message: 'Please log in to send recordings',
+        isAuthError: true,
+      });
+      return;
+    }
+
+    setIsSending(true);
+    setUploadProgress(0);
+    
+    try {
+      // Check authentication first
+      const isAuthenticated = await audioRecordingService.checkAuthentication();
+      if (!isAuthenticated) {
+        ErrorHandler.showErrorAlert({
+          message: 'Please log in again to send recordings',
+          isAuthError: true,
+        });
+        return;
+      }
+
+      // Generate unique dictation ID
+      const dictationId = audioRecordingService.generateDictationId();
+      
+      // Prepare recording data
+      const recordingData = audioRecordingService.prepareRecordingData(
+        recordedUri,
+        totalRecordingDuration,
+        dictationId,
+        patientName || undefined
+      );
+
+      // Upload to backend with progress tracking
+      const result = await audioRecordingService.uploadRecordingWithUserData(
+        recordingData,
+        (progress) => {
+          setUploadProgress(progress);
+          console.log(`Upload progress: ${progress}%`);
+        }
+      );
+      
+      ErrorHandler.showSuccessAlert(
+        'Recording sent successfully!',
+        () => handleStartNewRecording()
+      );
+      
+      console.log('Recording uploaded successfully:', result);
+    } catch (error: any) {
+      console.error('Send recording error:', error);
+      
+      const appError = ErrorHandler.handleApiError(error);
+      ErrorHandler.showErrorAlert(appError, () => handleSendRecording());
+      
+      ErrorHandler.logError(error, 'Send Recording');
+    } finally {
+      setIsSending(false);
+      setUploadProgress(0);
+    }
+  };
+
   // --- Waveform Generation ---
   // const generateWaveform = () => {
   //   const heights = [15, 30, 10, 35, 20, 40, 15, 30, 10, 35, 20, 40, 15, 20];
@@ -718,11 +801,21 @@ export default function RecordScreen() {
                 <Text style={styles.actionText}>Discard</Text>
               </TouchableOpacity>
               
-              <TouchableOpacity style={styles.actionButton}>
+              <TouchableOpacity 
+                style={[styles.actionButton, isSending && styles.actionButtonDisabled]}
+                onPress={handleSendRecording}
+                disabled={isSending}
+              >
                 <View style={styles.actionIconContainer}>
-                  <Ionicons name="arrow-up" size={24} color="#00AEEF" />
+                  {isSending ? (
+                    <ActivityIndicator size="small" color="#00AEEF" />
+                  ) : (
+                    <Ionicons name="arrow-up" size={24} color="#00AEEF" />
+                  )}
                 </View>
-                <Text style={styles.actionText}>Send</Text>
+                <Text style={styles.actionText}>
+                  {isSending ? `Sending... ${uploadProgress}%` : 'Send'}
+                </Text>
               </TouchableOpacity>
               
               <TouchableOpacity style={styles.actionButton}>
@@ -1048,5 +1141,8 @@ const styles = StyleSheet.create({
     height: 16,
     backgroundColor: "#fff",
     marginHorizontal: 1,
+  },
+  actionButtonDisabled: {
+    opacity: 0.7,
   },
 });

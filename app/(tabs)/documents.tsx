@@ -32,7 +32,10 @@ const DocumentsScreen = () => {
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   
-  const { recordings, getRecordingsByDate, deleteRecording } = useOutboxContext();
+  const outboxContext = useOutboxContext();
+  const recordings = outboxContext.recordings;
+  const getRecordingsByDate = outboxContext.getRecordingsByDate;
+  const deleteRecording = outboxContext.deleteRecording;
 
   const tabs: { key: TabType; label: string }[] = [
     { key: "pending", label: "Pending" },

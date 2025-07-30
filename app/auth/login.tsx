@@ -1,5 +1,5 @@
 // app/auth/login.tsx
-import { useAuthContext } from "@/contexts/AuthContext";
+import { useAuthContext } from "../../contexts/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage"; // Import AsyncStorage
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -28,10 +28,12 @@ import { authStyles } from "../../styles/authStyles"; // Adjust path as per your
 // Import assets. Ensure paths are correct and assets exist.
 import Corner from "../../assets/corner.png";
 import AppLogo from "../../assets/logo.png";
+import { ErrorHandler } from "../../utils/errorUtils";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login } = useAuthContext();
+  const authContext = useAuthContext();
+  const login = authContext.login;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -59,12 +61,14 @@ export default function LoginScreen() {
     loadRememberedCredentials();
   }, []);
 
+
+
   const handleLogin = async () => {
     setErrors({ email: "", password: "" });
     let isValid = true;
 
     if (!email) {
-      setErrors((prev) => ({ ...prev, email: "  Please Enter Your Username" }));
+      setErrors((prev) => ({ ...prev, email: "  Please Enter Your Email" }));
       isValid = false;
     }
     if (!password) {
@@ -79,23 +83,36 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     try {
-      const success = await login(email, password);
-      if (success) {
-        if (rememberMe) {
-          const data = {
-            userName: email,
-            password: password,
-          };
-          await AsyncStorage.setItem("userLogin", JSON.stringify(data));
-        } else {
-          await AsyncStorage.removeItem("userLogin");
-        }
-        router.replace("../(tabs)");
+      console.log('=== LOGIN ATTEMPT START ===');
+      console.log('Email:', email);
+      console.log('Password length:', password.length);
+      
+
+      
+      await login(email, password);
+      
+      console.log('=== LOGIN SUCCESS ===');
+      
+      // If login is successful, save credentials if remember me is checked
+      if (rememberMe) {
+        const data = {
+          userName: email,
+          password: password,
+        };
+        await AsyncStorage.setItem("userLogin", JSON.stringify(data));
       } else {
-        Alert.alert("Error", "Login failed. Please check your credentials.");
+        await AsyncStorage.removeItem("userLogin");
       }
-    } catch (error) {
-      Alert.alert("Error", "An error occurred during login");
+      
+      router.replace("../(tabs)");
+    } catch (error: any) {
+      console.error('=== LOGIN ERROR ===');
+      console.error('Login error:', error);
+      
+      const appError = ErrorHandler.handleApiError(error);
+      ErrorHandler.showErrorAlert(appError, () => handleLogin());
+      
+      ErrorHandler.logError(error, 'Login');
     } finally {
       setIsLoading(false);
     }

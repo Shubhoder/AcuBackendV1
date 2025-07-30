@@ -3,7 +3,8 @@ import { useRouter } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 const Logout = () => {
-  const { logout } = useAuthContext();
+  const authContext = useAuthContext();
+  const logout = authContext.logout;
   const router = useRouter();
 
   const handleLogout = () => {

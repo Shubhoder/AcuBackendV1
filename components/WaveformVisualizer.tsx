@@ -11,7 +11,9 @@ export const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
   isRecording,
   audioRecorder,
 }) => {
-  const { addWaveformSample, getAllWaveformSamples } = useWaveformContext();
+  const waveformContext = useWaveformContext();
+  const addWaveformSample = waveformContext.addWaveformSample;
+  const getAllWaveformSamples = waveformContext.getAllWaveformSamples;
   const animatedValues = useRef<Animated.Value[]>([]).current;
 
   // Initialize animated values for waveform bars

@@ -21,7 +21,7 @@
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = Doctor/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = Doctor/Info.plist; sourceTree = "<group>"; };
 		2E17931B1691571956E69666 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-Doctor/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		3F106D684B13533E849E4CFB /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = Doctor/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		3F106D684B13533E849E4CFB /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = Doctor/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		8BBF29F519B9DB6693E960C7 /* Pods-Doctor.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Doctor.debug.xcconfig"; path = "Target Support Files/Pods-Doctor/Pods-Doctor.debug.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = Doctor/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
@@ -73,7 +73,6 @@
 				8BBF29F519B9DB6693E960C7 /* Pods-Doctor.debug.xcconfig */,
 				EBC47C3DC68717B5AD873DBD /* Pods-Doctor.release.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
@@ -407,7 +406,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
-				PRODUCT_BUNDLE_IDENTIFIER = com.subhashptl777.acuvoice;
+				PRODUCT_BUNDLE_IDENTIFIER = com.subhashptl777.acuvoice2;
 				PRODUCT_NAME = Doctor;
 				SWIFT_OBJC_BRIDGING_HEADER = "Doctor/Doctor-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -441,7 +440,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = com.subhashptl777.acuvoice;
+				PRODUCT_BUNDLE_IDENTIFIER = com.subhashptl777.acuvoice2;
 				PRODUCT_NAME = Doctor;
 				SWIFT_OBJC_BRIDGING_HEADER = "Doctor/Doctor-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;

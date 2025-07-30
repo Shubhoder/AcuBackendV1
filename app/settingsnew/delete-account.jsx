@@ -1,8 +1,68 @@
 import { useRouter } from "expo-router";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { 
+  Image, 
+  StyleSheet, 
+  Text, 
+  TouchableOpacity, 
+  View, 
+  Alert, 
+  ActivityIndicator 
+} from "react-native";
+import { useState } from "react";
+import { useAuthContext } from "../../contexts/AuthContext";
 
 const DeleteAccountScreen = () => {
   const router = useRouter();
+  const authContext = useAuthContext();
+  const deleteAccount = authContext.deleteAccount;
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Delete Account",
+      "Are you absolutely sure you want to delete your account? This action cannot be undone and all your data will be permanently lost.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: confirmDeleteAccount,
+        },
+      ]
+    );
+  };
+
+  const confirmDeleteAccount = async () => {
+    setIsLoading(true);
+    try {
+      await deleteAccount();
+      
+      Alert.alert(
+        "Account Deleted",
+        "Your account has been successfully deleted.",
+        [{ text: "OK", onPress: () => router.replace("/auth") }]
+      );
+    } catch (error) {
+      console.error('Delete account error:', error);
+      
+      let errorMessage = "Failed to delete account. Please try again.";
+      
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.status === 401) {
+        errorMessage = "Authentication failed. Please log in again.";
+      } else if (error.status >= 500) {
+        errorMessage = "Server error. Please try again later.";
+      }
+      
+      Alert.alert("Error", errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -29,13 +89,22 @@ const DeleteAccountScreen = () => {
       </Text>
 
       {/* Buttons */}
-      <TouchableOpacity style={styles.deleteButton}>
-        <Text style={styles.deleteButtonText}>Delete My Account</Text>
+      <TouchableOpacity 
+        style={[styles.deleteButton, isLoading && styles.buttonDisabled]}
+        onPress={handleDeleteAccount}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <ActivityIndicator color="#D71E28" size="small" />
+        ) : (
+          <Text style={styles.deleteButtonText}>Delete My Account</Text>
+        )}
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={styles.goBackButton}
+        style={[styles.goBackButton, isLoading && styles.buttonDisabled]}
         onPress={() => router.back()}
+        disabled={isLoading}
       >
         <Text style={styles.goBackText}>Go Back</Text>
       </TouchableOpacity>
@@ -103,6 +172,10 @@ const styles = StyleSheet.create({
   goBackText: {
     color: "#374151",
     fontSize: 16,
+    fontWeight: "600",
     textAlign: "center",
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
 });

@@ -1,13 +1,5 @@
 import { useState, useEffect } from 'react';
-
-interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  username: string;
-  mobile: string;
-}
+import { authService, User } from '../services/authService';
 
 interface AuthState {
   user: User | null;
@@ -23,75 +15,139 @@ export const useAuth = () => {
   });
 
   useEffect(() => {
-    // Simulate checking for existing session
-    const timer = setTimeout(() => {
+    // Check for existing authentication on app start
+    checkExistingAuth();
+  }, []);
+
+  const checkExistingAuth = async () => {
+    try {
+      const isAuthenticated = await authService.isAuthenticated();
+      if (isAuthenticated) {
+        const user = await authService.getStoredUser();
+        setAuthState({
+          user,
+          isLoading: false,
+          isAuthenticated: true,
+        });
+      } else {
+        setAuthState({
+          user: null,
+          isLoading: false,
+          isAuthenticated: false,
+        });
+      }
+    } catch (error) {
+      console.error('Error checking authentication:', error);
       setAuthState({
         user: null,
         isLoading: false,
         isAuthenticated: false,
       });
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, []);
+    }
+  };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      setAuthState(prev => ({ ...prev, isLoading: true }));
       
-      // Mock user data
-      const mockUser: User = {
-        id: '1',
-        email,
-        firstName: 'Dr.',
-        lastName: 'Rajeev',
-        username: 'drajeev',
-        mobile: '9865453215',
-      };
-
+      const result = await authService.login(email, password);
+      
       setAuthState({
-        user: mockUser,
+        user: result.user,
         isLoading: false,
         isAuthenticated: true,
       });
 
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login failed:', error);
-      return false;
+      setAuthState(prev => ({ ...prev, isLoading: false }));
+      
+      // Re-throw the error so the UI can handle it
+      throw error;
     }
   };
 
-  const signup = async (userData: Omit<User, 'id'> & { password: string }): Promise<boolean> => {
+  const signup = async (userData: { email: string; password: string; name: string; profileImage?: any }): Promise<boolean> => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      setAuthState(prev => ({ ...prev, isLoading: true }));
       
-      const newUser: User = {
-        ...userData,
-        id: Date.now().toString(),
-      };
-
+      const result = await authService.signUp(userData);
+      
+      // After successful signup, we need to login to get the token
+      const loginResult = await authService.login(userData.email, userData.password);
+      
       setAuthState({
-        user: newUser,
+        user: loginResult.user,
         isLoading: false,
         isAuthenticated: true,
       });
 
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Signup failed:', error);
-      return false;
+      setAuthState(prev => ({ ...prev, isLoading: false }));
+      
+      // Re-throw the error so the UI can handle it
+      throw error;
     }
   };
 
-  const logout = () => {
-    setAuthState({
-      user: null,
-      isLoading: false,
-      isAuthenticated: false,
-    });
+  const logout = async () => {
+    try {
+      await authService.logout();
+      setAuthState({
+        user: null,
+        isLoading: false,
+        isAuthenticated: false,
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  const changePassword = async (oldPassword: string, newPassword: string): Promise<boolean> => {
+    try {
+      await authService.changePassword(oldPassword, newPassword);
+      return true;
+    } catch (error: any) {
+      console.error('Change password failed:', error);
+      throw error;
+    }
+  };
+
+  const deleteAccount = async (): Promise<boolean> => {
+    try {
+      if (!authState.user) {
+        throw new Error('No user logged in');
+      }
+      
+      await authService.deleteAccount(authState.user.userID);
+      setAuthState({
+        user: null,
+        isLoading: false,
+        isAuthenticated: false,
+      });
+      return true;
+    } catch (error: any) {
+      console.error('Delete account failed:', error);
+      throw error;
+    }
+  };
+
+  const getUserProfile = async (): Promise<User | null> => {
+    try {
+      if (!authState.user) {
+        return null;
+      }
+      
+      const profile = await authService.getUserProfile(authState.user.userID);
+      setAuthState(prev => ({ ...prev, user: profile }));
+      return profile;
+    } catch (error: any) {
+      console.error('Get user profile failed:', error);
+      throw error;
+    }
   };
 
   return {
@@ -99,5 +155,8 @@ export const useAuth = () => {
     login,
     signup,
     logout,
+    changePassword,
+    deleteAccount,
+    getUserProfile,
   };
 };

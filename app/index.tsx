@@ -6,7 +6,9 @@ import { Colors } from '../constants';
 
 export default function IndexScreen() {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuthContext();
+  const authContext = useAuthContext();
+  const isAuthenticated = authContext.isAuthenticated;
+  const isLoading = authContext.isLoading;
 
   useEffect(() => {
     if (!isLoading) {

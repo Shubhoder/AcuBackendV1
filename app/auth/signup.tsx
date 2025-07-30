@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button, TextInput, Checkbox } from '../../components/ui';
-import { useAuthContext } from '@/contexts/AuthContext';
+import { useAuthContext } from '../../contexts/AuthContext';
 import { Colors, Spacing, Typography } from '../../constants';
 
 // Import your shared authentication styles
@@ -28,22 +28,17 @@ import AppLogo from '../../assets/logo.png';
 
 export default function SignUpScreen() {
   const router = useRouter();
-  const { signup } = useAuthContext();
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState(''); // Initialized to empty
-  const [mobile, setMobile] = useState(''); // Initialized to empty
-  const [username, setUsername] = useState('');
+  const authContext = useAuthContext();
+  const signup = authContext?.signup;
+  const [name, setName] = useState(''); // Combined name field for backend
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState(''); // Added for typical signup flow
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({
-    firstName: '',
-    lastName: '',
+    name: '',
     email: '',
-    mobile: '',
-    username: '',
     password: '',
     confirmPassword: '',
     agreeTerms: '',
@@ -52,11 +47,8 @@ export default function SignUpScreen() {
   const handleSignUp = async () => {
     // Reset errors first
     setErrors({
-      firstName: '',
-      lastName: '',
+      name: '',
       email: '',
-      mobile: '',
-      username: '',
       password: '',
       confirmPassword: '',
       agreeTerms: '',
@@ -64,23 +56,16 @@ export default function SignUpScreen() {
     
     let isValid = true;
     const newErrors = {
-      firstName: '',
-      lastName: '',
+      name: '',
       email: '',
-      mobile: '',
-      username: '',
       password: '',
       confirmPassword: '',
       agreeTerms: '',
     };
 
     // Validate all fields
-    if (!firstName) {
-      newErrors.firstName = 'First Name is required';
-      isValid = false;
-    }
-    if (!lastName) {
-      newErrors.lastName = 'Last Name is required';
+    if (!name.trim()) {
+      newErrors.name = 'Name is required';
       isValid = false;
     }
     if (!email) {
@@ -88,14 +73,6 @@ export default function SignUpScreen() {
       isValid = false;
     } else if (!/\S+@\S+\.\S+/.test(email)) {
       newErrors.email = 'Invalid email format';
-      isValid = false;
-    }
-    if (!mobile) {
-      newErrors.mobile = 'Mobile number is required';
-      isValid = false;
-    }
-    if (!username) {
-      newErrors.username = 'Username is required';
       isValid = false;
     }
     if (!password) {
@@ -106,41 +83,50 @@ export default function SignUpScreen() {
       isValid = false;
     }
     if (!confirmPassword) {
-      newErrors.confirmPassword = 'Confirm Password is required';
+      newErrors.confirmPassword = 'Please confirm your password';
       isValid = false;
     } else if (password !== confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
       isValid = false;
     }
     if (!agreeTerms) {
-      newErrors.agreeTerms = 'You must agree to the Terms & Service';
+      newErrors.agreeTerms = 'You must agree to the terms and conditions';
       isValid = false;
     }
 
-    // Set all errors at once
-    setErrors(newErrors);
-
-    if (!isValid) return;
+    if (!isValid) {
+      setErrors(newErrors);
+      return;
+    }
 
     setIsLoading(true);
     try {
-      const success = await signup({
-        firstName,
-        lastName,
-        email,
-        mobile,
-        username,
+      await signup({
+        name: name.trim(),
+        email: email.trim(),
         password,
       });
-
-      if (success) {
-        Alert.alert("Success", "Account created successfully! Please log in."); // Inform user to log in
-        router.replace("./login"); // Redirect to login after successful signup
-      } else {
-        Alert.alert('Error', 'Sign up failed. Please try again.');
+      
+      Alert.alert(
+        'Success', 
+        'Account created successfully! You are now logged in.',
+        [{ text: 'OK', onPress: () => router.replace('../(tabs)') }]
+      );
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      
+      // Handle specific error cases
+      let errorMessage = "Signup failed. Please try again.";
+      
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.status === 409) {
+        errorMessage = "An account with this email already exists.";
+      } else if (error.status >= 500) {
+        errorMessage = "Server error. Please try again later.";
       }
-    } catch (error) {
-      Alert.alert('Error', 'An error occurred during sign up');
+      
+      Alert.alert("Signup Error", errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -196,26 +182,14 @@ export default function SignUpScreen() {
             <View style={authStyles.nameRow}>
               <View style={authStyles.nameField}>
                 <TextInput
-                  label="First Name"
-                  value={firstName}
+                  label="Name"
+                  value={name}
                   onChangeText={(text) => {
-                    setFirstName(text);
-                    if (text) setErrors(prev => ({ ...prev, firstName: '' }));
+                    setName(text);
+                    if (text) setErrors(prev => ({ ...prev, name: '' }));
                   }}
-                  placeholder="First Name"
-                  error={errors.firstName}
-                />
-              </View>
-              <View style={authStyles.nameField}>
-                <TextInput
-                  label="Last Name"
-                  value={lastName}
-                  onChangeText={(text) => {
-                    setLastName(text);
-                    if (text) setErrors(prev => ({ ...prev, lastName: '' }));
-                  }}
-                  placeholder="Last Name"
-                  error={errors.lastName}
+                  placeholder="Enter your name"
+                  error={errors.name}
                 />
               </View>
             </View>
@@ -233,32 +207,7 @@ export default function SignUpScreen() {
               error={errors.email}
             />
 
-            <TextInput
-              label="Mobile"
-              value={mobile}
-              onChangeText={(text) => {
-                setMobile(text);
-                if (text) setErrors(prev => ({ ...prev, mobile: '' }));
-              }}
-              placeholder="9876543210"
-              keyboardType="phone-pad"
-              error={errors.mobile}
-            />
-
             <View style={authStyles.credentialsRow}>
-              <View style={authStyles.credentialsField}>
-                <TextInput
-                  label="Username"
-                  value={username}
-                  onChangeText={(text) => {
-                    setUsername(text);
-                    if (text) setErrors(prev => ({ ...prev, username: '' }));
-                  }}
-                  placeholder="Enter Username"
-                  autoCapitalize="none"
-                  error={errors.username}
-                />
-              </View>
               <View style={authStyles.credentialsField}>
                 <TextInput
                   label="Password"
@@ -272,19 +221,20 @@ export default function SignUpScreen() {
                   error={errors.password}
                 />
               </View>
+              <View style={authStyles.credentialsField}>
+                <TextInput
+                  label="Confirm Password"
+                  value={confirmPassword}
+                  onChangeText={(text) => {
+                    setConfirmPassword(text);
+                    if (text) setErrors(prev => ({ ...prev, confirmPassword: '' }));
+                  }}
+                  placeholder="********"
+                  isPassword
+                  error={errors.confirmPassword}
+                />
+              </View>
             </View>
-
-            <TextInput
-              label="Confirm Password"
-              value={confirmPassword}
-              onChangeText={(text) => {
-                setConfirmPassword(text);
-                if (text) setErrors(prev => ({ ...prev, confirmPassword: '' }));
-              }}
-              placeholder="********"
-              isPassword
-              error={errors.confirmPassword}
-            />
 
             <View style={authStyles.rememberMeContainerWrapper}> {/* Reusing this style for terms, name changed below */}
               <Checkbox

@@ -16,8 +16,11 @@ import { useOutboxContext } from '../../contexts/OutboxContext';
 import { AudioService } from '../../services/audioService';
 
 export default function HomeScreen() {
-  const { user } = useAuthContext();
-  const { recordings, deleteRecording } = useOutboxContext();
+  const authContext = useAuthContext();
+  const user = authContext.user;
+  const outboxContext = useOutboxContext();
+  const recordings = outboxContext.recordings;
+  const deleteRecording = outboxContext.deleteRecording;
   
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
 

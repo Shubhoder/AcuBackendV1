@@ -16,24 +16,24 @@ export const authStyles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
     backgroundColor: 'rgba(0, 0, 0, 0.4)', // 0.4 opacity
     zIndex: 100,
   },
   cornerimage: {
-    position: 'absolute',
+    position: 'absolute' as const,
     top: 0,
     right: -15, // Adjusted from RN -15
     width: 170, // Example size, adjust based on your asset
     height: 170, // Example size, adjust based on your asset
-    resizeMode: 'contain',
+    resizeMode: 'contain' as const,
     zIndex: 101,
   },
   appLogoContainer: {
     width: 207,
     height: 61,
-    alignSelf: 'center',
+    alignSelf: 'center' as const,
     backgroundColor: '#fff',
     borderRadius: 100,
     marginTop: Spacing.heightDiv7, // height / 7
@@ -42,7 +42,7 @@ export const authStyles = StyleSheet.create({
   appLogo: {
     width: '100%',
     height: '100%',
-    resizeMode: 'contain',
+    resizeMode: 'contain' as const,
   },
   header: {
     marginVertical: Spacing.xxl, // 20
@@ -53,7 +53,7 @@ export const authStyles = StyleSheet.create({
     lineHeight: Typography.lineHeights.title, // 20
     fontFamily: Typography.fontFamilies.bold, // Raleway-Bold
     color: Colors.text.primary, // #1a1c1e
-    textAlign: 'center',
+    textAlign: 'center' as const,
   },
   subtitle: {
     fontSize: Typography.sizes.sm, // 12
@@ -61,10 +61,10 @@ export const authStyles = StyleSheet.create({
     lineHeight: Typography.lineHeights.subtitle, // 18
     fontFamily: Typography.fontFamilies.regular, // Raleway-Regular
     color: Colors.text.secondary, // #6c7278
-    textAlign: 'center',
+    textAlign: 'center' as const,
     width: 222, // From RN
     marginTop: Spacing.lg, // 10
-    alignSelf: 'center',
+    alignSelf: 'center' as const,
   },
   form: {
     marginBottom: Spacing.xxxl, // 24
@@ -76,10 +76,10 @@ export const authStyles = StyleSheet.create({
     fontSize: Typography.sizes.sm, // 12
     fontWeight: Typography.weights['400'], // 400
     color: Colors.text.secondary, // #6c7278
-    textAlign: 'center',
+    textAlign: 'center' as const,
   },
   linkText: {
-    textDecorationLine: 'underline',
+    textDecorationLine: 'underline' as const,
     color: Colors.primary, // #0093D0
   },
   rememberMeContainerWrapper: {
@@ -87,8 +87,8 @@ export const authStyles = StyleSheet.create({
   },
   // Specific styles for signup screen if needed, e.g., for two-column inputs
   nameRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
     gap: Spacing.xs, // Using gap from RN for consistency (you had marginHorizontal: -Spacing.xs)
     marginBottom: Spacing.xl, // For spacing between rows
   },
@@ -97,8 +97,8 @@ export const authStyles = StyleSheet.create({
     // marginHorizontal: Spacing.xs, // Handled by gap on parent
   },
   credentialsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
     gap: Spacing.xs, // Using gap from RN for consistency
     marginBottom: Spacing.xl, // For spacing between rows
   },
